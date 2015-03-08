@@ -108,6 +108,8 @@ as possible, such as recovering a critical file system from a backup. Reboot
 and shutdown run levels are usually also configured.
 
 
+--------------------------------------------------------------------------------
+
 ## 2. Writing and debugging scripts
 
 ### 2.1. Creating and running a script
@@ -142,6 +144,8 @@ will do, then we could enclose it in the script like this:
 	w
 	set +x	# stop debugging from here
 
+
+--------------------------------------------------------------------------------
 
 ## 3. The Bash environment
 
@@ -221,4 +225,161 @@ Putting spaces around the equal sign will cause errors.
 
 #### 3.2.3. Exporting variables
 
+A variable created like the ones in the example above is only available to the 
+current shell. Child processes of the current shell will not be aware of this 
+variable. In order to pass variables to a subshell, we need to *export* them 
+using the export built-in command.
 
+A subshell can change variables it  inherited from the parent, but the changes 
+made by the child dont affect the parent.
+
+
+#### 3.2.5. Special parameters
+
+* $* -
+
+* $@ - Expands to the positional parameters, starting from one. When the 
+       expansion occurs within double quotes, each parameter expands to a 
+       separate word.
+
+* $# - Expands to the number of positional parameters in decimal.
+
+* $? - Expands to the exit status of the most recent executed foreground 
+       pipeline.
+
+* $- -
+
+* $$ - Expands to the process ID of the shell.
+
+* $! - Expands to the process ID of the most recently executed backgroud (
+       asynchronous) command.
+
+* $0 - Expands to the name of the shell or shell script.
+
+* $_ - "> grep dictionary /usr/share/dict/words
+       > echo $_
+       /usr/share/dict/words"
+
+The positional parameters are the words following the name of a shell script. 
+They are put into the variables "$1, $2, $3" and so on. "$#" holds the total 
+number of parameters.
+
+
+### 3.3. Quoting characters
+
+#### 3.3.3. Single quotes
+
+Single quotes('') are used to preserve the literal value of each character 
+enclosed within quotes. A single quote may not occur between single quotes, 
+even when preceded by a backslash.
+
+
+#### 3.3.4. Double quotes
+
+Using double quotes the literal value of all characters enclosed is preserved, 
+except for the dollar sign, the backticks(backward single quotes, ``) and the 
+backslash. The dollar sign and the backticks retain their special meaning 
+within the double quotes. The backslash retains its meaning only when followed 
+by dollar, double quote, backslash or newline.
+
+
+### 3.4. Shell expansion
+
+#### 3.4.2. Brace expansion
+
+Brace expansions may be nested. The results of each expanded string are not 
+sorted; left to right order is preserved:
+	> echo sp{el,il,al} l
+	spell spill spall
+Brace expansion is performed before any other expansions, and any characters 
+special to other expansions are preserved in the result.
+
+
+#### 3.4.3. Tilde expansion
+
+#### 3.4.4. Shell parameter and variable expansion
+
+The basic form of parameter expansion is "${PARAMETER}". The value of "PARAME-
+TER" is substituted. The braces are required when "PARAMETER" is a positional 
+parameter with more than one digit, or when "PARAMETER" is followed by a 
+character that is not to be interpreted as part of its name.
+
+If the first character of "PARAMETER" is an exclamtion point, Bash uses the 
+value of the variable formed from the rest of "PARAMETER" as the name of the 
+variable; this variable is then expanded and that value is used in the rest of 
+the substitution.
+	> echo ${!N*}
+	NNTPPORT NNTPSERVER NPX_PLUGIN_PATH
+
+
+#### 3.4.5. Command substitution
+
+Command substitution allows the output of a command to replace the command its-
+elf. Command substitution occurs when a command is enclosed like this:
+	$(command) or `command`
+
+
+#### 3.4.6. Arithmetic expansion
+
+Arithmetic expansion allows the evaluation of an arithmetic expression and the 
+substitution of the result. The format for arithmetic expansion is:
+	$((EXPRESSION))
+The expression is treated as if it were within double quotes, but a double 
+quote inside the parentheses is not treated specially.
+
+
+#### 3.4.7. Process substitution
+
+Process substitution is supported on systems that support named pipes(FIFOs) or 
+the "/dev/fd" method of naming open files. It takes the form of
+	<(LIST) or >(LIST)
+The process "LIST" is run with its input or output connected to a FIFO or some 
+file in "/dev/fd". The name of this file is passed as an argument to the 
+current command as the result of the expansion.
+
+
+#### 3.4.8. Word splitting
+
+The shell treats each character of "$IFS" as a delimiter, and splits the 
+results of the other expansions into words on these characters. If "IFS" is 
+unset, or its value is exactly "<space><tab><new line>".
+
+
+#### 3.4.9. File name expansion
+
+After word splitting, unless the "-f" option has been set, Bash scans each word 
+for the characters "*", "?", and "[". If one of these characters appears, then 
+the word is regarded as a *PATTERN*, and replaced with an alphabetically sorted 
+lsit of file names matching the pattern.
+
+
+### 3.5. Aliases
+
+#### 3.5.1. What are aliases?
+
+An alias allows a string to be substituted for a word when it is used as the 
+first word of a simple command.
+
+Aliases are not expanded when the shell is not interactive, unless the 
+"expand_aliases" option is set using the `shopt` shell built-in.
+
+To be safe, always put alias definitions on a separate line, and do not use 
+"alias" in compound commands.
+
+While aliases are easier to understand, shell functions are preferred over 
+aliases for almost every purpose.
+
+
+### 3.6. More Bash options
+
+#### 3.6.1. Displaying options
+
+Use the "-o" option to `set` to display all shell options.
+
+
+#### 3.6.2. Changing options
+
+For changing the current environment temporarily, or for use in a script, we 
+would rather use `set`, use "-" for enabling an option, "+" for disabling:
+	set -o noclobber
+	set +o noclobber
