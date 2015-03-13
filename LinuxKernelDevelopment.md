@@ -1,9 +1,8 @@
---------------------------------------------------------------------------------
+-----------
 
 ## 13. The Virtual Filesystem
 
 ### Filesystem Abstraction Layer
-
 
 ### Unix Filesystem
 
@@ -33,33 +32,27 @@ files.
 ### VFS Objects and Their Data Structures
 
 The VFS is object-oriented. The four primary object types of the VFS are:
-	* The *superblock* object, which represents a specific mounted 
-	  filesystem.
-
-	* The *inode* object, which represents a specific file.
-
-	* The *dentry* object, which represents a directory entry, which is a 
-	  single component of a path.
-
-	* The *file* object, which represents an open file as associated with 
-	  a process.
+* The *superblock* object, which represents a specific mounted 
+  filesystem.
+* The *inode* object, which represents a specific file.
+* The *dentry* object, which represents a directory entry, which is a 
+  single component of a path.
+* The *file* object, which represents an open file as associated with 
+  a process.
 
 An operations object is contained within each of these primary objects. These 
 objects describe the methods that the kernel invokes against the primary 
 objects:
-	* The `super_operations` object, which contains the methods that the 
-	  kernel can invoke on a specific filesystem, such as `write_inode()` 
-	  and `sync_fs()`.
-
-	* The `inode_operations` object, which contains the methods that the 
-	  kernel can invoke on a specific file, such as `create()` and `link()`.
-
-	* The `dentry_operations` object, which contains the methods that the 
-	  kernel can invoke on a specific directory entry, such as 
-	  `d_compare()` and `d_delete()`.
-
-	* The `file_operations` object, which contains the methods that a proc-
-	  ess can invoke on an open file, such as `read()` and `write()`.
+* The `super_operations` object, which contains the methods that the 
+  kernel can invoke on a specific filesystem, such as `write_inode()` 
+  and `sync_fs()`.
+* The `inode_operations` object, which contains the methods that the 
+  kernel can invoke on a specific file, such as `create()` and `link()`.
+* The `dentry_operations` object, which contains the methods that the 
+  kernel can invoke on a specific directory entry, such as 
+  `d_compare()` and `d_delete()`.
+* The `file_operations` object, which contains the methods that a proc-
+  ess can invoke on an open file, such as `read()` and `write()`.
 The operations objects are implemented as a structure of pointers to functions 
 that operate on the parent object.
 
@@ -137,13 +130,11 @@ was deleted or the path name was never correct to begin with.
 The kernel caches dentry objects in the detry cache or, simply, the *dcache*.
 
 The dentry cache consists of three parts:
-	* Lists of **used** dentries linked off their associated inode.
-
-	* A doubly linked **least recently used** list of unused and negative 
-	  dentry objects.
-
-	* A hash table and hashing function used to quickly resolve a given 
-	  path into the associated dentry object.
+* Lists of **used** dentries linked off their associated inode.
+* A doubly linked **least recently used** list of unused and negative 
+  dentry objects.
+* A hash table and hashing function used to quickly resolve a given 
+  path into the associated dentry object.
 
 The dcache also provides the front end to an inode cache, the *icache*. Inode 
 objects that are associated with dentry objects are not freed because the 
@@ -223,7 +214,7 @@ hand, do not specify these flags and consequently have their own filesystems
 information and open files tables.
 
 
---------------------------------------------------------------------------------
+-----------
 
 ## 14. The Block I/O Layer
 
@@ -289,19 +280,16 @@ the unnecessary dividing of requests into block-sized chunks, only to later
 reassemble them.  Because the bio structure is lightweight, it can describe 
 discontiguous blocks and does not unnecessarily split I/O operations. Other 
 benefits, as well:
-	* The bio structure can easily represent high memory, because struct 
-	  bio deals with only physical pages and not direct pointers.
-
-	* The bio structure can represent both normal page I/O and direct I/O.
-
-	* The bio structure makes it easy to perform scatter-gather block I/O 
-	  operations, with the data involved in the operation originating 
-	  from multiple physical pages.
-
-	* The bio structure is much more lightweight than a buffer head 
-	  because it contains only the minimum information needed to represent 
-	  a block I/O operation and not unnecessary infomation related to the 
-	  buffer itself.
+* The bio structure can easily represent high memory, because struct 
+  bio deals with only physical pages and not direct pointers.
+* The bio structure can represent both normal page I/O and direct I/O.
+* The bio structure makes it easy to perform scatter-gather block I/O 
+  operations, with the data involved in the operation originating 
+  from multiple physical pages.
+* The bio structure is much more lightweight than a buffer head 
+  because it contains only the minimum information needed to represent 
+  a block I/O operation and not unnecessary infomation related to the 
+  buffer itself.
 
 The concept of buffer heads is still required, buffer heads function as 
 descriptors, mapping disk blocks to pages.
@@ -334,7 +322,7 @@ to the block device. It manages the request queue with the goal of reducing
 seeks.
 
 
---------------------------------------------------------------------------------
+------------------
 
 ## 16. The Page Cache and  Page Writeback
 
@@ -350,11 +338,11 @@ Access to a prticular piece of data tends to be clustered in time is called
 #### Write Caching
 
 Caches can implement one of three different strategies:
-	* no-write: the cache simply does not cache **write** operations.
-	* write-through: write operations immediately go through the cache to 
-	  the disk.
-	* write-back: processes perform write operations directly into the 
-	  page cache, the backing store is not immediately or directly updated.
+* no-write: the cache simply does not cache **write** operations.
+* write-through: write operations immediately go through the cache to 
+  the disk.
+* write-back: processes perform write operations directly into the 
+  page cache, the backing store is not immediately or directly updated.
 
 A write-back is generally considered superior to a write-through strategy 
 because by deferring the writes to disk, they can be coalesced and performed in 
@@ -364,7 +352,6 @@ bulk at a later time.
 #### Cache Eviction
 
 * Least Recently Used(LRU).
-
 * The Two-List strategy: Instead of maintaining one list, the LRU list, Linux 
   keeps two lists: the active list and the inactive list. Page are placed on 
   the active list only when they are accessd while already residing on the 
@@ -389,7 +376,9 @@ store describes how it interacts with the page cache via its own
 Steps involved in each, starting with a page read operation. First, the Linux 
 kernel attempts to find the request data in the page cache.  The 
 `find_get_page()` method is used to perform this check:
-	page = find_get_page(mapping, index);
+```C
+page = find_get_page(mapping, index);
+```
 Here, `mapping` is the given `address_space` and `index` is the desired offset 
 into the file, in pages. If the page does not exist in the cache, 
 `find_get_page()` return NULL and a new page is allocated and added to the page 
@@ -410,19 +399,16 @@ disk.
 Prior to the 2.6 kernel, the page cache was not searched via the radix tree. 
 Instead, a global hash was maintained over all the pages in the system. The 
 global hash had four primary problems:
-	* A single global lock protected the hash. Lock contention was quite 
-	  high on even moderately sized machines, and performance suffered as a 
-	  result.
-
-	* The hash was lager than necessary because it contained all the pages 
-	  in the page cache, whereas only pages pertaining to the current file 
-	  were relevant.
-
-	* Performance when the hash lookup failed was slower than desired, 
-	  particularly because it was necessary to walk the chains off of a 
-	  given hash value.
-
-	* The hash consumed more memory than other possible solutions.
+* A single global lock protected the hash. Lock contention was quite 
+  high on even moderately sized machines, and performance suffered as a 
+  result.
+* The hash was lager than necessary because it contained all the pages 
+  in the page cache, whereas only pages pertaining to the current file 
+  were relevant.
+* Performance when the hash lookup failed was slower than desired, 
+  particularly because it was necessary to walk the chains off of a 
+  given hash value.
+* The hash consumed more memory than other possible solutions.
 
 
 ### The Buffer Cache
@@ -439,11 +425,9 @@ describle the mapping of a block onto a page, which is in the page cache.
 ### The Flusher Threads
 
 Dirty page writeback occurs in 3 situations:
-	* When free memory shrinks below a specified threshold.
-
-	* When dirty data grows older than a specific threshold.
-
-	* When a user process invokes the `sync()` and `fsync()`.
+* When free memory shrinks below a specified threshold.
+* When dirty data grows older than a specific threshold.
+* When a user process invokes the `sync()` and `fsync()`.
 
 The system administrator can set these values(`dirty_background_ratio, 
 dirty_expire_interval, dirty_writeback_interval..`) in `/proc/sys/vm`.

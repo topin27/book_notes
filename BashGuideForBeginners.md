@@ -1,4 +1,4 @@
---------------------------------------------------------------------------------
+----------
 
 ## 1. Bash and Bash scripts
 
@@ -10,14 +10,14 @@
 
 A *interactive login shell* means that you got the shell after authenticating 
 to the system, files read:
-	* `/etc/profile`
-	* `~/.bash_profile`, `~/.bash_login` or `~/.profile`
-	* `~/.bash_logout` upon logout.
+* `/etc/profile`
+* `~/.bash_profile`, `~/.bash_login` or `~/.profile`
+* `~/.bash_logout` upon logout.
 
 A *interactive non-login shell* means that you did not have to authenticate to 
 the system, for instance, when you open a terminal, that is a non-login shell. 
 Files read: 
-	* `~/.bashrc`, this file is usually referred to in `~/.bash_profile`
+* `~/.bashrc`, this file is usually referred to in `~/.bash_profile`
 
 
 ##### 1.2.2.5. Shell arithmetic
@@ -63,17 +63,14 @@ utes the command directly, without creating a new process.
 
 An important part of the tasks of the shell is to search for commands. Bash 
 does this as follows:
-	* Check whether the command contains slashes. If not, first chech with 
-	  the function list to see if it contains a command by the name we are 
-	  looking for.
-
-	* If command is not a function, check for it in the built-in list.
-
-	* If command is neither a function nor a built-in, look for it 
-	  analyzing the directories listed in `PATH`.
-
-	* If the search is unsuccessful, bash prints an error message and 
-	  returns an exit status of 127.
+* Check whether the command contains slashes. If not, first chech with 
+  the function list to see if it contains a command by the name we are 
+  looking for.
+* If command is not a function, check for it in the built-in list.
+* If command is neither a function nor a built-in, look for it 
+  analyzing the directories listed in `PATH`.
+* If the search is unsuccessful, bash prints an error message and 
+  returns an exit status of 127.
 
 
 ### 1.5. Developing good scripts
@@ -81,18 +78,18 @@ does this as follows:
 #### 1.5.2. Structure
 
 When starting on a new script, ask yourself the following questions:
-	* Will I be needing any information from the user or from the users 
-	  environment?
+* Will I be needing any information from the user or from the users 
+  environment?
 
-	* How will I store that information?
+* How will I store that information?
 
-	* Are there any files that need to be created? Where and with which 
-	  permissions and ownerships?
+* Are there any files that need to be created? Where and with which 
+  permissions and ownerships?
 
-	* What commands will I use? When using the script on different systems,
-	  do all these systems have these commands in the required versions?
+* What commands will I use? When using the script on different systems,
+  do all these systems have these commands in the required versions?
 
-	* Does the user need any notifications? When and why?
+* Does the user need any notifications? When and why?
 
 #### 1.5.6. Example init script
 
@@ -108,7 +105,7 @@ as possible, such as recovering a critical file system from a backup. Reboot
 and shutdown run levels are usually also configured.
 
 
---------------------------------------------------------------------------------
+----------
 
 ## 2. Writing and debugging scripts
 
@@ -140,12 +137,14 @@ Using the `set` Bash built-in you can run in normal mode those portions of the
 script of which you are sure they are without fault, and display debugging inf-
 ormation only for troublesome zones. Say we are not sure what the `w` command 
 will do, then we could enclose it in the script like this:
-	set -x 	# activeate debugging from here
-	w
-	set +x	# stop debugging from here
+```sh
+$ set -x 	# activeate debugging from here
+$ w
+$ set +x	# stop debugging from here
+```
 
 
---------------------------------------------------------------------------------
+---------
 
 ## 3. The Bash environment
 
@@ -207,19 +206,18 @@ environment variables) and functions.
 
 According to the sort of content the variables contains, variables come in 4 
 types:
-	* String variables
-
-	* Integer variables
-
-	* Constant variables
-
-	* Array variables
+* String variables
+* Integer variables
+* Constant variables
+* Array variables
 
 
 #### 3.2.2. Creating variables
 
 To set a variable in the shell, use:
-	VARNAME="value"
+```
+$ VARNAME="value"
+```
 Putting spaces around the equal sign will cause errors.
 
 
@@ -237,25 +235,17 @@ made by the child dont affect the parent.
 #### 3.2.5. Special parameters
 
 * $* -
-
 * $@ - Expands to the positional parameters, starting from one. When the 
        expansion occurs within double quotes, each parameter expands to a 
        separate word.
-
 * $# - Expands to the number of positional parameters in decimal.
-
 * $? - Expands to the exit status of the most recent executed foreground 
        pipeline.
-
 * $- -
-
 * $$ - Expands to the process ID of the shell.
-
 * $! - Expands to the process ID of the most recently executed backgroud (
        asynchronous) command.
-
 * $0 - Expands to the name of the shell or shell script.
-
 * $_ - "> grep dictionary /usr/share/dict/words
        > echo $_
        /usr/share/dict/words"
@@ -289,8 +279,10 @@ by dollar, double quote, backslash or newline.
 
 Brace expansions may be nested. The results of each expanded string are not 
 sorted; left to right order is preserved:
-	> echo sp{el,il,al} l
-	spell spill spall
+```sh
+$ echo sp{el,il,al} l
+spell spill spall
+```
 Brace expansion is performed before any other expansions, and any characters 
 special to other expansions are preserved in the result.
 
@@ -308,22 +300,32 @@ If the first character of "PARAMETER" is an exclamtion point, Bash uses the
 value of the variable formed from the rest of "PARAMETER" as the name of the 
 variable; this variable is then expanded and that value is used in the rest of 
 the substitution.
-	> echo ${!N*}
-	NNTPPORT NNTPSERVER NPX_PLUGIN_PATH
+```sh
+$ echo ${!N*}
+NNTPPORT NNTPSERVER NPX_PLUGIN_PATH
+```
 
 
 #### 3.4.5. Command substitution
 
 Command substitution allows the output of a command to replace the command its-
 elf. Command substitution occurs when a command is enclosed like this:
-	$(command) or `command`
+```sh
+$(command)
+```
+or 
+```sh
+`command`
+```
 
 
 #### 3.4.6. Arithmetic expansion
 
 Arithmetic expansion allows the evaluation of an arithmetic expression and the 
 substitution of the result. The format for arithmetic expansion is:
-	$((EXPRESSION))
+```sh
+$ $((EXPRESSION))
+```
 The expression is treated as if it were within double quotes, but a double 
 quote inside the parentheses is not treated specially.
 
@@ -332,7 +334,13 @@ quote inside the parentheses is not treated specially.
 
 Process substitution is supported on systems that support named pipes(FIFOs) or 
 the "/dev/fd" method of naming open files. It takes the form of
-	<(LIST) or >(LIST)
+```sh
+<(LIST)
+```
+or 
+```sh
+>(LIST)
+```
 The process "LIST" is run with its input or output connected to a FIFO or some 
 file in "/dev/fd". The name of this file is passed as an argument to the 
 current command as the result of the expansion.
@@ -381,5 +389,110 @@ Use the "-o" option to `set` to display all shell options.
 
 For changing the current environment temporarily, or for use in a script, we 
 would rather use `set`, use "-" for enabling an option, "+" for disabling:
-	set -o noclobber
-	set +o noclobber
+```sh
+set -o noclobber
+set +o noclobber
+```
+
+
+----------
+
+## 4. Regular expressions
+
+### 4.1. Regular expressions
+
+#### 4.1.2. Regular expression metacharacters
+
+Regular expression operators:
+* ".":
+* "?":     The preceding item is optional and will be matched, at most once.
+* "*":     The preceding item will be matched zero or more times.
+* "+":     The preceding item will be matched one or more times.
+* "{N}":   The preceding item is matched exactly N times.
+* "{N,}":  The preceding item is matched N or more times.
+* "{N,M}": The preceding item is matched at least N time, but no more than M 
+           times.
+* "-":
+* "^":     Matches the empty string at the beginning of a line; also represents 
+           the characters not in the range of a list.
+* "$":     Matches the empty string at the end of a line.
+* "\b":    Matches the empty string at the edge of a word.
+* "\B":    Matches the empty string provided its not at the edge of a word.
+* "\<":    Matches the empty string at the beginning of word.
+* "\>":    Matches the empty string at the end of word.
+
+Two regular expressions may be joined by the infix operator "|"; the resulting 
+regular expression matches any string matching either subexpression.
+
+
+### 4.2. Examples using `grep`
+
+#### 4.2.2. Grep and regular expressions
+
+##### 4.2.2.2. Character classes
+
+A **bracket expression** is a list of characters enclosed by "[" and "]". It 
+matches any single character in that list; if the first character of the list 
+is the caret, "^", then it am
+
+Within a bracket expression, a **range expression** consists of two characters 
+separated by a hyphen.
+
+
+### 4.3. pattern matching using Bash features
+
+#### 4.3.2. Character classes
+
+Character classes can be specified within the square braces, using the syntax 
+"[:CLASS:]", where "CLASS" is defined in the POSIX standard and has one of the 
+values: "alnum", "alpha", "ascii", "blank", "cntrl", "digit", "graph", "lower", 
+"print", "punct", "space", "upper", "word", "xdigit".
+```sh
+$ ls [[:digit:]]*
+2/
+```
+
+
+## 5. The GNU sed stream editor
+
+### 5.2. Interactive editing
+
+#### 5.2.1. Printing lines containing a pattern
+
+```sh
+$ sed '/erors/p' example
+```
+```sh
+$ sed -n '/erors/p' example
+```
+
+
+#### 5.2.2. Deleting lines of input containing pattern
+
+```sh
+$ sed '/erors/d' example
+```
+
+#### 5.2.3. Ranges of lines
+
+```sh
+$ sed '2,4d' example
+```
+```sh
+$ sed '3,$d' example
+```
+
+Prints the first line containing the pattern "a text", up to and including the 
+next line containing the pattern "a line":
+```sh
+$ sed -n '/a text/,/This/p' example
+```
+
+
+#### 5.2.4. Find and replace with sed
+
+```sh
+$ sed 's/erors/errors/' example
+```
+
+--------------------------------------------------------------------------------
