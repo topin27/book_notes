@@ -1,6 +1,6 @@
 # Effective Python
 
------
+--------
 
 ## Pythonic Thinking
 
@@ -13,7 +13,7 @@
   evaluate on False;
 
 
-### Item 3: Know the Differences Between bytes, str, and unicode
+### Item 3: Know the Differences Between `bytes`, `str`, and `unicode`
 
 In Python 3, there are two types that represent sequences of characters: bytes 
 and str. Instances of bytes contain raw 8-bit values. Instances of str contain 
@@ -83,7 +83,7 @@ If you assign a slice with no start or end indexes, you will replace its entire
 contents with a copy of what is referenced(instead of allocating a new list).
 
 
-### Item 6: Avoid Using start, end, and stride in a Single Slice
+### Item 6: Avoid Using `start`, `end`, and `stride` in a Single Slice
 
 Avoid using start, end and stride together in a single slice. If you need all 
 three parameters, consider doing two assignments(one to slice, another to 
@@ -520,8 +520,7 @@ def safe_division_d(number, divisor, **kwargs):
 ## 3. Classes and Inheritance
 
 
-### Item 22: Prefer Helper Classes Over Bookkeeping with Dictionaries and 
-             Tuples
+### Item 22: Prefer Helper Classes Over Bookkeeping with Dictionaries and Tuples
 
 Pythons built-in dictionary and tuple types made it easy to keep going, adding 
 layer to the internal bookkeeping. But you should avoid doing this for more 
@@ -678,6 +677,165 @@ with TemporaryDirectory() as tmpdir:
 ```
 Now you can write other `GenericInputData` and `GenericWorker` classes as you 
 wish and not have to rewrite any of the glue code.
+
+
+### Item 25: Initialize Parent Classes with `super`
+
+The old way to initialize a parent class from a child class is to directly call 
+the parent classs `__init__` method with the child instance.
+```python
+class MyBaseClass(object):
+    def __init__(self, value):
+        self.value = value
+
+class MyChildClass(MyBaseClass):
+    def __init__(self):
+        MyBaseClass.__init__(self, 5)
+```
+This approach works fine for simple hierarchies but breaks down in many cases. 
+If your class is affected by multiple inheritance, calling the superclasses `
+__init__` methods directly can lead to unpredictable behavior.
+
+```python
+class TimesFive(MyBaseClass):
+    def __init__(self, value):
+        MyBaseClass.__init__(self, value)
+        self.value *= 5
+
+class PlusTwo(MyBaseClass):
+    def __init__(self, value):
+        MyBaseClass.__init__(self, value)
+        self.value += 2
+
+class ThisWay(TimesFive, PlusTwo):
+    def __init__(self, value):
+        TimesFive.__init__(self, value)
+        PlusTwo.__init__(self, value)   # reset back the 'value' to 5
+
+foo = ThisWay(5)
+print('(5 * 5) + 2 = 27 but is ', foo.value)
+>>> (5 * 5) + 2 = 27 but is 7
+```
+
+To solve these problems, Python 2.2 added `super` built-in function and defined 
+the *method resolution order*(MRO).
+```python
+class TimesFiveCorrect(MyBaseClass):
+    def __init__(self, value):
+        super(TimesFiveCorrect, self).__init__(value)
+        self.value *= 5
+
+class PlusTwoCorrect(MyBaseClass):
+    def __init__(self, value):
+        super(PlusTwoCorrect, self).__init__(value)
+        self.value += 2
+
+class GoodWay(TimesFiveCorrect, PlusTwoCorrect):
+    def __init__(self, value):
+        super(GoodWay, self).__init__(value)
+
+foo = GoodWay(5)
+print('5 * (5 + 2) = 35 and is ', foo.value)
+>>> 5 * (5 + 2) = 35 and is 35  # not (5 * 5) + 2 = 27!!!
+from pprint import pprint
+pprint(GoodWay.mro())
+>>> [<class ‘__main__.GoodWay’>,
+<class  ‘__main__.TimesFiveCorrect’>,
+<class  ‘__main__.PlusTwoCorrect’>,
+<class  ‘__main__.MyBaseClass’>,
+<class  ‘object’>]
+```
+When I call `GoodWay(5)`, it in turn calls `TimesFiveCorrect.__init__`, which 
+calls `PlusTwoCorrect.__init__`, which calls `MyBaseClass.__init__`. Once this 
+reaches the top of the diamond, then all of the initialization methods actually 
+do  their work in the opposite order from how their `__init__` functions were 
+called.
+
+But the syntax is a bit verbose. Python 3 fixes these issues:
+```python
+class Explicit(MyBaseClass):
+    def __init__(self, value):
+        super(__class__, self).__init__(value * 2)
+
+class Implicit(MyBaseClass):
+    def __init__(self, value):
+        super().__init__(value * 2)
+
+assert Explicit(10).value == Implicit(10).value
+```
+
+
+### Item 26: Use Multiple Inheritance Only for Mix-in Utility Classes
+
+As other programming language, it is better to avoid multiple inheritance alto-
+gether. But if you find yourself desiring the convenience and encapsulation 
+that comes with multiple inheritance, consider writing a *mix-in* instead. A 
+mix-in is a small class that only defines a set of additional methods that a 
+class should provide. Mix-in classes do not define their own instance attribu-
+tes nor require their `__init__` constructor to be called.
+
+
+### Item 27: Prefer Public Attribute Over Private Ones
+
+In Python, there are only two types of attribute visibility for a classs 
+attribute: *public* and *private*.
+
+As you would expect with private fields, a subclass can not access its parent 
+classs private fields.
+
+The only time to seriously consider using private attributes is when you are 
+worried about naming conflicts with subclasses. This is primarily a concern 
+with classes that are part of a public API; the subclasses are out of your 
+control, so you can not refactor to fix the problem. To reduce the risk of this 
+happening, you can use a private attribute in the parent class to ensure that 
+there are no attribute names that overlap with child classes.
+
+
+### Item 28: Inherit from `collections.abc` for Custom Container Types
+
+Python implements its container behaviors with instance methods that have 
+special names. When you access a sequence item by index:
+```python
+bar = [1, 2, 3]
+bar[0]
+```
+it will be interpreted as:
+```python
+bar.__getitem__(0)
+```
+
+```python
+class FrequencyList(list):  # a container type that subclass from built-in list
+    def __init__(self, members):
+        super().__init__(members)
+    def frequency(self):
+        counts = {}
+        for item in self:
+            counts.setdefault(item, 0)
+            counts[item] += 1
+        return counts
+foo = FrequencyList(['a', 'b', 'a', 'c', 'b', 'a', 'd'])
+print('Length is ', len(foo))
+foo.pop()
+print('After pop: ', repr(foo))
+print('Frequency: ', foo.frequency())
+>>> 
+Length  is  7
+After   pop:    [‘a’,   ‘b’,    ‘a’,    ‘c’,    ‘b’,    ‘a’]
+Frequency:  {‘a’:   3,  ‘c’:    1,  ‘b’:    2}
+```
+But if you want to provide an object that feels like a `list`, but it is not a 
+`list` subclass, you need to implements `__getitem__`, `__len__` and so on.
+
+Defining your own container types is much harder than it looks. To avoid this
+differently throughout the Python universe, the built-in `collections.abc` 
+module defines a set of abstract base classes that provide all of the typical 
+method for each container type.
+
+
+-------------
+
+## 4. Metaclasses and Attributes
 
 
 --------
