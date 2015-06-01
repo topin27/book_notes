@@ -1,8 +1,10 @@
 # Effective Python
 
+
 --------
 
-## Pythonic Thinking
+## 1. Pythonic Thinking
+
 
 ### Item 2: Follow the PEP8 Style Guide
 
@@ -836,6 +838,568 @@ method for each container type.
 -------------
 
 ## 4. Metaclasses and Attributes
+
+
+### item 29: use Plain Attributes Instead of Get and Set Methods
+
+In Python, however, you almost never need to implement explicit setter or 
+getter methods. Instead, you should always start your implementations with 
+simple public attributes. These make operations like incrementing in place 
+natural and clear.
+
+If you decide you need special behavior when an attribute is set, you can migr-
+ate to the `@property` decorator and its coresponding `setter` attribute.
+```python
+class Resistor(object):
+    def __init__(self, ohms):
+        self.ohms = ohms
+        self.voltage = 0
+        self.current = 0
+
+class VoltageRessitance(Resistor):
+    def __init__(self, ohms):
+        super().__init__(ohms)
+        self._voltage = 0
+    @property
+    def voltage(self):
+        return self._voltage
+    @voltage.setter
+    def voltage(self, voltage):
+        self._voltage = voltage
+        self.current = self._voltage / self.ohms
+
+r2 = VoltageResistance(1e3)
+print(‘Before: %5r amps’ % r2.current)
+r2.voltage = 10
+print(‘After: %5r amps’ % r2.current)
+>>>
+Before:     0 amps
+After:   0.01 amps
+```
+
+Specifying a `setter` on a property also lets you perform type checking and 
+validation on values passed to your class.
+```python
+class BoundedResistance(Resistor):
+    def __init__(self, ohms):
+        super().__init__(ohms)
+    @property
+    def ohms(self):
+        return self._ohms
+    @ohms.setter
+    def ohms(self, ohms):
+        if ohms <= 0:
+            raise ValueError('%f ohms must be > 0' % ohms)
+        self._ohms = ohms
+
+r3 = BoundedResistance(1e3)
+r3.ohms = 0
+>>> ValueError: 0.000000 ohms must be > 0
+BoundedResistance(-5)
+>>> ValueError: -5.000000 ohms must be > 0
+```
+
+You can even use `@property` to make attributes from parent classes immutable.
+```python
+class FixedResistance(Resistor):
+    # ...
+    @property
+    def ohms(self):
+        return self._ohms
+    @ohms.setter
+    def ohms(self, ohms):
+        if hasattr(self, '_ohms'):
+            raise AttributeError('Can not set attribute')
+        self._ohms = ohms
+
+r4 = FixedResistance(1e3)
+r4.ohms = 2e3
+>>> AttributeError: Can’t set attribute
+```
+
+
+### Item 30: Consider `@property` Instead of Refactoring Attributes
+
+The built-in `@property` decorator makes it easy for simple accesses of an 
+instances attributes to act smarter. One advanced but common use of `@property` 
+is transitioning what was once a simple numerical attribute into an on-the-fly 
+calculation.
+
+```python
+class Bucket(object):
+    def __init__(self, period):
+        self.period_delta = timedelta(seconds=period)
+        self.reset_time = datetime.now()
+        self.max_quota = 0
+        self.quota_consumed = 0
+    def __repr__(self):
+        return ('Bucket(max_quota=%d, quota_consumed=%d)' % 
+                (self.max_quota, self.quota_consumed))
+    @property
+    def quota(self):
+        return self.max_quota - self.quota_consumed
+    @quota.setter
+    def quota(self, amount):
+        delta = self.max_quota - amount
+        if amount == 0:
+            self.quota_consumed = 0
+            self.max_quota = 0
+        elif delta < 0:
+            assert self.quota_consumed == 0
+            self.max_quota = amount
+        else:
+            assert self.max_quota >= self.quota_consumed
+            self.quota_consumed += delta
+```
+
+
+### Item 31: use Descriptors for Reusable `@property` Methods
+
+The big problem with the `@property` built-in is the methods ti decorates can 
+not be reused for multiple attributes of the same class. They also can not be 
+reused by unrelated classes.
+```python
+class Exam(object):
+    def __init__(self):
+        self._writing_grade = 0
+        self._math_grade = 0
+    @staticmethod
+    def _check_grade(value):
+        if not (0 <= value <= 100):
+            raise ValueError(‘Grade must be between 0 and 100’)
+    @property
+    def writing_grade(self):
+        return self._writing_grade
+    @writing_grade.setter
+    def writing_grade(self, value):
+        self._check_grade(value)
+        self._writing_grade = value
+    @property
+    def math_grade(self):
+        return self._math_grade
+    @math_grade.setter
+    def math_grade(self, value):
+        self._check_grade(value)
+        self._math_grade = value
+```
+Also, this approach is not general. It is gets tedious.
+
+The better way to do this in Python is to use a *descriptor*. the descriptor 
+protocol defines how attribute access is interpreted by the language. A descr-
+iptor class can provide `__get__` and `__set__` methods that let you reuse the 
+grade validation behavior without any boilerplate.
+```python
+class Grade(object):
+    def __init__(self):
+        self._value = WeakKeyDictionary()
+    def __get__(self, instance, instance_type):
+        if instance is None:
+            return self
+        return self._value.get(instance, 0)
+    def __set__(self, instance, value):
+        if not (0 <= value <= 100):
+            raise ValueError('Grade must be between 0 and 100')
+        self._value[instance] = value
+
+class Exam(object):
+    math_grade = Grade()
+    writing_grade = Grade()
+    science_grade = Grade()
+
+exam = Exam()
+exam.writing_grade = 40 #==> "Exam.__dict__['writing_grade'].__set__(exam, 40)"
+print(exam.writing_grade) #==> "Exam.__dict__['writing_grade'.__get__(exam, Exam)]"
+```
+
+* Reuse the behavior and validation of `@property` methods by defining your own 
+  descriptor classes.
+* Use `WeakKeyDictionary` to ensure that your descriptor classes do not cause 
+  memory leaks.
+
+
+### Item 32: Use `__getattr__`, `__getattribute__`, and `__setattr__` for Lazy Attributes
+
+If your class defines `__getattr__`, that method is called every time an attri-
+bute can not be found in an objects instance dictionary.
+```python
+class LazyDB(object):
+    def __init__(self):
+        sef.exists = 5
+    def __getattr__(self, name):
+        value = 'Value for %s' % name
+        setattr(self, name, value)
+        return value
+data = LazyDB()
+print('Before: ', data.__dict__)
+print('foo:    ', data.foo)
+print('After: ', data.__dict__)
+>>>
+Before: {'exists': 5}
+foo:    Value for foo
+After:  {'exists': 5, 'foo': 'Value for foo'}
+```
+
+Python has another language hook called `__getattribute__`. This special method 
+is called every time an attribute is accessed on an object, even in cases where 
+it **does** exist in the attribute dictionary. This enables you to do things 
+like check global transaction state on every property access.
+```python
+class ValidatingDB(object):
+    def __init__(self):
+        self.exists = 5
+    def __getattribute__(self, name):
+        print('Called __getattribute__(%s)' % name)
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            value = 'Value for %s' % name
+            setattr(self, name, value)
+            return value
+
+data = ValidatingDB()
+print('exists: ', data.exists)
+print('foo:    ', data.foo)
+print('foo:    ', data.foo)
+>>>
+Called __getattribute__(exists)
+exists: 5
+Called __getattribute__(foo)
+foo:    Value for foo
+Called __getattribute__(foo)
+foo:    Value for foo
+```
+
+Python code implementing generic functionality often relies on the `hasattr` 
+built-in function to determine when properties exist, and the `getattr` built-
+in function to retrieve property values. These functions also look in the 
+instance dictionary for an attribute name before calling `__getattr__`.
+
+Unlike retrieving an attribute with `__getattr__` and `__getattribute__`, there 
+is no need for two separate methods. The `__setattr__` method is always called 
+every time an attribute is assigned on an instance(either directly or through 
+the `setattr` built-in function).
+
+The problem with `__getattribute__` and `__setattr__` is that they are called on 
+every attribute access for an object, even when you may not want that to happen.
+```python
+class BrokenDictionaryDB(object):
+    def __init__(self, data):
+        self._data = {}
+    def __getattribute__(self, name):
+        print('Called __getattribute__(%s)' % name)
+        return self._data[name]
+data = BrokenDictionaryDB({'foo': 3})
+data.foo
+>>>
+Called __getattribute__(foo)
+Called __getattribute__(_data)
+Called __getattribute__(_data)
+...
+Traceback ...
+RuntimeError: maximum recursion depth exceeded
+```
+The problem is that `__getattribute__` accesses `self._data`, which causes `
+__getattribute__` to run again, which accesses `self._data` again, and so on.
+The solution is to use the `super().__getattribute__` method on your instance 
+to fetch values from the instance attribute dictionary.
+```python
+class DictionaryDB(object):
+    def __init__(self, data):
+        self._data = data
+    def __getattribute__(self, name):
+        data_dict = super().__getattribute__('_data')
+        return data_dict[name]
+```
+Similarly, you will need `__setattr__` methods that modify attributes on an 
+object to use `super().__setattr__`.
+
+
+### Item 33: Validate Subclasses with Metaclasses
+
+One of the simplest applications of metaclasses is verifying that a class was 
+defined correctly. When you are building a complex class hierarchy, you may 
+want to enforce sytle, require overriding methods, or and so on. Using 
+metaclasses for validation can raise errors much earlier. A metaclass is 
+defined by inheriting from `type`.
+```python
+class Meta(type):
+    def __new__(meta, name, bases, class_dict):
+        print((meta, name, bases, class_dict))
+        return type.__new__(meta, name, bases, class_dict)
+
+class MyClass(object, metaclass=Meta):
+    stuff = 123
+    def foo(self):
+        pass
+
+>>>
+(<class ‘__main__.Meta’>,
+ ‘MyClass’,
+ (<class ‘object’>,),
+ {‘__module__’: ‘__main__’,
+  ‘__qualname__’: ‘MyClass’,
+  ‘foo’: <function MyClass.foo at 0x102c7dd08>,
+  ‘stuff’: 123})
+```
+The metaclass has access to the name of the class, the parent classes it 
+inherits form, and all of the class attributes that were defined in the classs 
+body.
+
+Python 2 has slightly different syntax and specifies a metaclass using the `
+__metaclass__` class attribute.
+```python
+class Meta(type):
+    def __new__(meta, name, bases, class_dict):
+        # ...
+
+class MyClassInPython2(object):
+    __metaclass__ = Meta
+    # ...
+```
+
+You can add functionality to the `Meta.__new__` method in order to validdate 
+all of the parameters of a class before it is defined.
+
+The `__new__` method of metaclasses is run after the `class` statements entire 
+body has been processed.
+
+
+### Item 34: Register Class Existence with Metaclasses
+
+Another common use of metaclasses is to automatically register types in your 
+program.
+
+```python
+class BetterSerializable(object)
+    def __init__(self, \*args):
+        sefl.args = args
+    def serialize(self):
+        return json.dumps({'class': self.__class__.__name__,
+                           'args': self.args,})
+    def __repr__(self):
+        # ...
+registry = {}
+def register_class(target_class):
+    registry[target_class.__name__] = target_class
+def deserialize(data):
+    params = json.loads(data)
+    name = params['class']
+    target_class = registry(name)
+    return target_class(\*params['args'])
+
+class EvenBetterPoint2D(BetterSerializable):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.x = x
+        self.y = y
+register_class(EvenBetterPoint2D)
+
+point = EvenBetterPoint2D(5, 3)
+print('Before: ', point)
+data = point.serialize()
+print('Serialized: ', data)
+after = deserialize(data)
+print('After: ', after)
+```
+Now, I can deserialize an arbitrary JSON string without having to know which 
+class it contains. The problem with this approach is that you can forget to 
+call `register_class`.
+
+Metaclasses enable this by intercepting the `class` statement when subclasses 
+are defined.
+```python
+class Meta(type):
+    def __new__(meta, name, bases, class_dir):
+        cls = type.__new__(meta, name, bases, class_dict)
+        register_class(cls)
+        return cls
+class RegisteredSerializable(BetterSerializable, metaclass=Meta):
+    pass
+class Vector3D(RegisteredSerializable):
+    def __init__(self, x, y, z):
+        super().__init__(x, y, z)
+        self.x, self.y, self.z = x, y, z
+```
+Using metaclasses for class regisration ensures that you will never miss a 
+class as long as the inheritance tree is right.
+
+
+### Item 35: Annotate Class Attributes with Metaclasses
+
+```python
+class Field(object):
+    def __init__(self, name):
+        self.name = name
+        self.internal_name = '_' + self.name
+    def __get__(self, instance, instance_type):
+        if instance is None:
+            return self
+        return getattr(instance, self.internal_name, '')
+    def __set__(self, instance, value):
+        setattr(instance, self.internal_name, value)
+class Customer(object):
+    first_name = Field('first_name')
+    last_name = Field('last_name')
+    prefix = Field('prefix')
+    sufix = Field('sufix')
+
+foo = Customer()
+print('Before: ', repr(foo.first_name), foo.__dict__)
+foo.first_name = 'Euclid'
+print('After: ', repr(foo.first_name), foo.__dict__)
+>>>
+Before: '' {}
+After: 'Euclid' {‘_first_name’: ‘Euclid’}
+```
+
+To eliminate the redundancy, use the metaclass.
+```python
+class Meta(type):
+    def __new__(meta, name, bases, class_dict):
+        for key, value in class_dict.items():
+            if isinstance(value, Field):
+                value.name = key
+                value.internal_name = '_' + key
+        cls = type.__new__(meta, name, bases, class_dict)
+        return cls
+class DatabaseRow(object, metaclass=Meta)
+    pass
+class Field(object):
+    def __init__(self):
+        # These will be assigned by the metaclass.
+        self.name = None
+        self.internal_name = None
+    # ...
+class BetterCustomer(DatabaseRow):
+    first_name = Field()
+    last_name = Field()
+    prefix = Field()
+    suffix = Field()
+foo = BetterCustomer()
+print('Before: ', repr(foo.first_name), foo.__dict__)
+foo.first_name = 'Euler'
+print('After: ', repr(foo.first_name), foo.__dict__)
+>>>
+Before: '' {}
+After: 'Euler' {'_first_name': 'Euler'}
+```
+
+
+-----------
+
+## 5. Concurrency and Parallelism
+
+
+### Item 36: Use `subprocess` to Manage Child Processes
+
+Child processes started by Python are able to run in parallel, enabling you to 
+use Python to consume all of the CPU cores of your machine and maximize the 
+throughput of your programs.
+```python
+proc = subprocess.Popen(['echo', 'hello from the child!'], 
+                        stdout=subprocess.PIPE)
+out, err = proc.communicate()
+print(out.decode('utf-8'))
+>>> hello from the child!
+```
+
+Child processes will run independently from their parent process, the Python 
+interpreter. Their status can be polled periodically while Python does other 
+work.
+```python
+proc = subprocess.Popen(['sleep', '0.3'])
+while proc.poll() is None:
+	print('working...')
+print('exit status: ', proc.poll())
+>>> 
+working...
+working...
+exit status 0
+```
+
+Decoupling the child process from the parent means that the parent process is 
+free to run many child processes in parallel.
+```python
+def run_sleep(period):
+    proc = subprocess.Popen(['sleep', str(period)])
+    return proc
+procs = []
+for _ in range(10):
+    proc = run_sleep(0.1)
+    procs.append(proc)
+for proc in procs:
+    proc.communicate()  # Get the result of the command and wait for the end.
+```
+
+You can also pipe data from your Python program into a subprocess and retrieve 
+its output. This allows you to utilize other programs to do work in parallel.
+```python
+def run_openssl(data):
+    env = os.environ.copy()
+    env['password'] = b'\xe23u\n\xdoq13s\x11'
+    proc = subprocess.Popen(['openssl', 'enc', '-des3', '-pass', 'env:password'], 
+                            env = env, stdin=subprocess.PIPE, 
+                            stdout=subprocess.PIPE)
+    proc.stdin.write(data)
+    proc.stdin.flush()  # Ensure the child gets input
+    return proc
+def run_md5(input_stdin):
+    proc = subprocess.Popen(['md5'], stdin=input_stdin, stdout=subprocess.PIPE)
+    return proc
+input_procs = []
+hash_procs = []
+for _in range(3):
+    data = os.urandom(10)
+    proc = run_openssl(data)
+    input_procs.append(proc)
+    hash_proc = run_md5(proc.stdout)
+    hash_procs.append(hash_proc)
+for proc in input_procs:
+    proc.communicate()
+for proc in hash_procs:
+    out, err = proc.communicate()
+    print(out.strip())
+```
+
+Use the `timeout` parameter with `communicate` to avoid deadlocks and hanging 
+child processes.
+
+
+### Item 37: Use Threads for Blocking I/O, Avoid for Parallelism
+
+Pythons bytecode interpreter has state that must be maintained and coherent 
+wihle the Python program executes. Python enforces coherence with a mechanism 
+called the *global interpreter lock*(GIL).
+
+Although Python supports multiple threads of execution, the GIL causes only one 
+of them to make forward progress at a time. This means that when you reach for 
+threads to do parallel computation and speed up your Python programs, you will 
+be sorely disappointed.
+
+There are ways to get CPython to utilize multiple cores, but it does not work 
+with the standard `Thread` class.
+
+The GIL prevents Python code from running in parallel, but it has no negative 
+effect on system calls. This works because Python threads release the GIL just 
+before they make system calls and reqcquire the GIL as soon as the system call 
+are done.
+
+So, why Python still support threads at all? Two good reasons:
+1. Muiltple threads make it easy for your program to seem like it is doing 
+   multiple things at the same time. Managing the juggling act of simultaneous 
+   task si difficult to implement yourself. CPython ensures a level of fairness 
+   between Python threads of execution, even though only one of them makes 
+   forward progress at a time due to the GIL.
+2. Python supports threads is to deal with blocking I/O, which happens when 
+   Python does certain types of system calls.
+
+Things to Remember:
+* Python threads can not run bytecode in parallel on multiple CPU cores because 
+  of the GIL.
+* Python threads are still useful despite the GIL because they provide an easy 
+  way to do multiple things at seemingly the same time.
+* Use Python threads to make multiple system calls in parallel. This allows you 
+  to do blocking I/O at the same time as computation.
 
 
 --------
