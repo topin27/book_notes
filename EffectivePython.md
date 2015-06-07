@@ -1289,6 +1289,21 @@ After: 'Euler' {'_first_name': 'Euler'}
 
 ## 5. Concurrency and Parallelism
 
+Concurrency is when a computer does many different things **seemingly** at the 
+same time. On a computer with one CPU core, the operating system will rapidlly 
+change which program is running on the single processor.
+
+Parallelism is **actually** doing many different things at the same time. 
+Computers with multiple CPU cores can execute multiple programs simultaneously.
+Each CPU core runs the instructions of a separate program.
+
+The key difference between parallelism and concurrency is *speedup*. When two 
+distinct paths of execution in a program make forward progress in parallel, the 
+time it takes to do the total work is cut in half; the speed of execution is 
+faster by a factor of two. In  contrast, concurrent programs may run thousands 
+of separate paths of execution seemingly in parallel but provide no speedup for 
+the total work.
+
 
 ### Item 36: Use `subprocess` to Manage Child Processes
 
@@ -1400,6 +1415,242 @@ Things to Remember:
   way to do multiple things at seemingly the same time.
 * Use Python threads to make multiple system calls in parallel. This allows you 
   to do blocking I/O at the same time as computation.
+
+
+### Item 38: Use Lock to Prevent Data Races in Threads
+
+* Even though Python has a GIL, you are still responsible for protecting against 
+  data races between the threads in your programs.
+* Your programs will corrupt their data structures if you allow multiple threads 
+  to modify the same objects without locks.
+* The `Lock` class in the `threading` built-in module is Pythons standard mutual 
+  exclusion lock implementation.
+
+
+### Item 39: Use `Queue` to Coordinate Work Between Threads
+
+A pipeline works like an assembly line used in manufacturing. Pipelines have 
+many phases in serial with a specific function for each phase. New pieces of 
+work are constantly added to the begining of the pipeline. Each function can 
+operate concurrently on the piece of work in its phase. The work moves forward 
+as each function completes until there are no phases remaining. This approach 
+is especially good for work that includes blocking I/O or subprocesses--
+activities that can easily be parallelized using Python.
+
+For example, say you want to build a system that will take a constant stream of 
+images from your digital camera, resize them, and then add them to a photo 
+gallery online.
+```python
+class MyQueue(object):
+    def __init__(self):
+        self.items = deque()
+        self.lock = Lock()
+    def put(self, item):
+        with self.lock:
+            self.items.append(item)
+    def get(self):
+        with self.lock:
+            self.items.popleft()
+
+class Worker(Thread):
+    def __init__(self, func, in_queue, out_queue):
+        super().__init__()
+        self.func = func
+        self.in_queue = in_queue
+        self.out_queue = out_queue
+        self.polled_count = 0
+        self.work_done = 0
+    def run(self):
+        while True:
+            self.polled_count += 1
+            try:
+                item = self.in_queue.get()
+            except IndexError:
+                sleep(0.01)     # No work to do
+            else:
+                result = self.func(item)
+                self.out_queue.put(result)
+                self.work_done += 1
+
+download_queue = MyQueue()
+resize_queue = MyQueue()
+upload_queue = MyQueue()
+done_queue = MyQueue()
+threads = [
+    Worker(download, download_queue, resize_queue)
+    Worker(resize, resize_queue, upload_queue)
+    Worker(upload, upload_queue, done_queue)
+]
+for thread in threads:
+    thread.start()
+for _ in range(1000):
+    download_queue.put(object())    # Use plain `object` instance as a proxy 
+                                    # for the real data
+while len(done_queue.items) < 1000:
+    # Do something useful while waiting
+    # ...
+```
+When the worker functions vary in speeds, an earlier phase can prevent progress 
+in later phases, backing up the pipeline. This causes later phases to starve 
+and constantly check their input queues for new work in a tight loop. The 
+outcome is that worker threads waste CPU time doing nothing useful.
+
+There are three more problems that you should also avoid:
+1. Determining that all of the input work is complete requires yet another busy 
+   wait on the `done_queue`.
+2. In `Worker` the `run` method will execute forever in its busy loop.
+3. If the first phase makes rapid progress but the second phase makes slow 
+   progress, then the queue connecting the first phase to the second phase will 
+   constantly increase in size.
+
+The `Queue` class from the `queue` built-in module provides all of the 
+functionality you need to solve these problems.
+
+Queue eliminates the busy waiting in the worker by making the `get` method 
+block until new data is available.
+```python
+queue = Queue()
+def consumer():
+    print('Consumer waiting')
+    queue.get()
+    print('Consumer done')
+thread = Thread(target=consumer)
+thread.start()
+
+print('Producer putting')
+queue.put(object())
+thread.join()
+print('Producer done')
+>>> Consumer waiting
+Producer putting
+Consumer done
+Producer done
+```
+
+To solve the pipeline backup issue, the `Queue` class lets you specify the 
+maximum amount of pending work you will allow between two phases.
+```python
+queue = Queue(1)    # Buffer size of 1
+def consumer():
+    time.sleep(0.1)
+    queue.get()
+    print('Consumer got 1')
+    queue.get()
+    print('Consumer got 2')
+thread = Thread(target=consumer)
+thread.start()
+queue.put(object())
+print('Producer put 1')
+queue.put(object()) # Will be blocked because of the `time.sleep()`
+print('Producer put 2')
+thread.join()
+print('Producer done')
+>>> 
+Producer put 1
+Consumer got 1
+Producer put 2
+Consumer got 2
+Producer done
+```
+
+The `Queue` class also track the progress of work using the `task_done` method. 
+```python
+in_queue = Queue()
+def consumer():
+    work = in_queue.get()   # Done second
+    # Doing work
+    # ...
+    in_queue.task_done()    # Done third
+Thread(target=consumer).start()
+in_queue.put(object())      # Done first
+in_queue.join()             # Done fourth
+```
+
+Put all of these together:
+```python
+class CloseableQueue(Queue):
+    SENTINEL = object()
+    def close(self):
+        self.put(self.SENTINEL)
+    def __iter__(self):
+        while True:
+            item = self.get()
+            try:
+                if item is self.SENTINEL:
+                    return
+                yield item
+            finally:
+                self.task_done()
+
+class StoppableWorker(Thread):
+    def __init__(self, func, in_queue, out_queue):
+        # ...
+    def run(self):
+        for itme in self.in_queue:
+            result = self.func(item)
+            self.out_queue.put(result)
+
+download_queue = CloseableQueue()
+# ...
+threads = [
+    StoppableWorker(download, download_queue, resize_queue)
+    # ...
+]
+
+for thread in threads:
+    thread.start()
+for _ in range(1000):
+    download_queue.put(object())
+download_queue.close()
+download_queue.join()
+resize_queue.close()
+resize_queue.join()
+upload_queue.close()
+upload_queue.join()
+```
+
+
+### Item 40: Consider Coroutines to Run Many Functions Concurrently
+
+Threre are three big problems with threads:
+1. They require special tools to coordinate with each other safely.
+2. Threads require a lot of memory, about 8MB per executing thread.
+3. Threads are costly to start.
+Python can work around these issues with *coroutines*. Conroutines let you have 
+many seemingly simultaneous functions in your Python programs. The cost of 
+starting a generator coroutine is a function call. Once active, they each use 
+less than 1KB of memory until they are exhausted.
+
+Coroutines work by enabling the code consuming a generator to `send` a value 
+back into the generator function after each `yield` expression.
+```python
+def my_coroutine():
+    while True:
+        received = yield
+        print('Received: ', received)
+it = my_coroutine()
+next(it)  # Prime the coroutine, prepare the generator to receive the value.
+it.send('First')
+it.send('Second')
+>>> Received: First
+Received: Second
+```
+
+To implement a generator coroutine that yields the minimum value it has been 
+sent so far.
+```python
+def minimize():
+    current = yield
+    while True:
+        value = yield current
+        current = min(value, current)
+it = minimize()
+next(it)
+print(it.send(10))
+print(it.send(4))
+print(it.send(22))
+print(it.send(-1))
+```
 
 
 --------
