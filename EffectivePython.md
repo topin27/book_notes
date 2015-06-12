@@ -440,11 +440,11 @@ the `next` built-in function.
 
 ### Item 18: Reduce Visual Noise with Variable Positional Arguments
 
-Functions that accept `*args` are best for situations where you know the number 
+Functions that accept `\*args` are best for situations where you know the number 
 of inputs in the argument list will be reasonably small.
 
 You can use the items from a sequence as the positional arguments for a function 
-with the `*` operator.
+with the `\*` operator.
 ```python
 def log(message, *values):
     pass
@@ -453,7 +453,7 @@ favorites = [7, 39, 99]
 log('Favorite colors', *favorites)      # * operator
 ```
 
-Using the `*` operator with a generator may cause your program to run out of 
+Using the `\*` operator with a generator may cause your program to run out of 
 memory and crash.
 
 
@@ -1653,9 +1653,370 @@ print(it.send(-1))
 ```
 
 
+### Item 41: Consider `concurrent.futures` for True Parallelism
+
+The `multiprocessing` built-in module, easily accessed via the `concurrent.
+futures` built-in module, eables Python to utilize multiple CPU cores in 
+parallel by running additional interpreters as child process. These child 
+processes are separate from the main interpreter, so their global interpreter 
+locks are also seperate. Each child can fully utilize one CPU core.
+
+The power of `multiprocessing` is best accessed through the `concurrent.futures` 
+built-in module and its simple `ProcessPoolExecutor` class. The advanced parts 
+of the `multiprocessing` module should be avoided because they are so complex.
+
+
+--------
+
+## 6. Built-in Modules
+
+
+### Item 42: Define Function Decorators with `functools.wraps`
+
+Python has special syntax for *decorators* that can be applied to functions. 
+Decorators have the ability to run additional code before and after any cals to 
+the functions they wrap. This allows them to access and modify input arguments 
+and return values. This functionality can be useful for enforcing semantics, 
+debugging, registering functions, and more.
+```python
+def trace(func):
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        print('%s(%r, %r)->%r' % (func.__name__, args, kwargs, result))
+        return result
+    return wrapper
+
+@trace
+def fibonacci(n):
+    if n in (0, 1):
+        return n
+    return (fibonacci(n - 2), + fibonacci(n - 1))
+```
+
+The `@` symbol is equivalent to `fibonacci = trace(fibonacci)`. but:
+```python
+print(fibonacci)
+>>> <function trace.<locals>.wrapper at 0x107f7ed08>
+```
+
+The solution is to use the wraps helper function from the `functools` built-in 
+module. Applying it to the `wrapper` function will copy all of the important 
+metadata about the inner function to the outer function.
+```python
+def trace(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # ...
+    return wrapper
+@trace
+def fibonacci(n):
+    # ...
+```
+
+
+### Item 43: Consider `contextlib` and `with` Statements for Reusable `try/finally` Behavior
+
+```python
+def my_function():
+    logging.debug('Some debug data')
+    logging.error('Error log here')
+    logging.debug('More debug data')
+my_function()
+>>> Error log here
+```
+The default log level for my program is `WARNING`, so only the error message 
+will print to screen when I run the function.
+
+```python
+@contextmanager
+def debug_logging(level):
+    logger = logging.getLogger()
+    old_level = logger.getEffectiveLevel()
+    logger.setLevel(level)
+    try:
+        yield
+    finally:
+        logger.setLevel(old_level)
+
+with debug_logging(logging.DEBUG):
+    print('Inside:')
+    my_function()
+print('After:')
+my_function()
+>>> 
+Inside:
+Some debug data
+Error log here
+More debug data
+After:
+Error log here
+```
+
+Using `with` targets:
+```python
+@contextmanager
+def log_level(level, name):
+    logger = logging.getLogger(name)
+    old_level = logger.getEffectiveLevel()
+    logger.setLevel(level)
+    try:
+        yield logger
+    finally:
+        logger.setLevel(old_level)
+
+with log_level(logging.DEBUG, 'my-log') as logger:
+    logger.debug('This is my message!')
+    logging.debug('This will not print')
+>>> This is my message!
+```
+
+
+### Item 44: Make `pickle` Reliable with `copyreg`
+
+The `pickle` built-in module can serialize Python objects into a stream of 
+bytes and deserialize bytes back into objects.
+
+The `copyreg` module lets you register the functions responsible for 
+serializing Python objects, allowing you to control the behavior of `pickle` 
+and make it more reliable.
+
+* The `pickle` built-in module is only useful for serializing and deserializing 
+  objects between trusted programs.
+* Use the `copyreg` built-in module with `pickle` to add missing attribute 
+  values, allow versioning of classes., and provide stable import paths.
+
+
+### Item 45: Use `datetime` Instead of `time` for Local Clocks
+
+* Avoid using the `time` module for translating between different time zones.
+* Use the `datetime` built-in module along with the `pytz` module to reliably 
+  convert between times in different time zones.
+* Always represent time in UTC and do conversions to local time as the final 
+  step before presentation.
+
+
+### Item 46: Use Built-in Algorithms and Data Structures
+
+#### Double-ended Queue
+
+The `deque` class from the `collections` module is a double-ended queue. It 
+provides constant time operations for inserting or removing items from its 
+begining or end.
+```python
+fifo = deque()
+fifo = append(1)
+x = fifo.popleft()
+```
+
+#### Orderd Dictionary
+
+Standard dictionaries are unordered. That means a `dict` with the same keys and 
+values can result in different orders of iteration.
+
+The `OrderdDict` class from the `collections` module is a special type of 
+dictionary that keeps track of the order in which its keys were inserted.
+
+#### Default Dictionary
+
+One problem with dictionaries is that you can't assume any keys are already 
+present.
+```python
+stats = {}
+key = 'my_counter'
+if key not in stats:
+    stats[key] = 0
+stats[key] += 1
+```
+
+The `defaultdict` class from the `collections` module simplifies by automatic-
+ally storing a default value when a key does't exist.
+```python
+stats = defaultdict(int)
+stats['my_counter'] += 1
+```
+
+#### Heap Queue
+
+Heaps are useful data structures for maintaining a priority queue.
+```python
+a = []
+heappush(a, 5)
+heappush(a, 3)
+heappush(a, 7)
+heappush(a, 4)
+print(heappop(a), heappop(a), heappop(a), heappop(a))
+>>> 3 4 5 7
+```
+
+#### Bisection
+
+Searching for an item in a `list` takes linear time proportional to its length 
+when you call the `index` method.
+```python
+x = list(range(10**6))
+i = x.index(991234)
+```
+
+The `bisect` module's functions, such as `bisect_left`, provide an efficient 
+binary search through a sequence of sorted items.
+```python
+i = bisect_left(x, 991234)
+```
+
+#### Iterator Tools
+
+The `itertools` functions fall into three main categories:
+* Linking iterators together
+* Filtering items from an iterator
+* Combinations of items from iterators
+
+
+### Item 47: Use `decimal` When Precision Is Paramout
+
+The `Decimal` class provides fixed point math of 28 decimal points by default. 
+It can go even higher if required. It is ideal for situations that require high 
+precision and exact rounding behavior, such as computations of monetary values.
+
+
+### Item 48: Know Where to Find Community-Built Modules
+
+pip.
+
+
 --------
 
 ## 7. Collaboration
+
+
+### Item 49: Write Docstrings for Every Function, Class, and Module
+
+#### Documenting Modules
+
+The first line of docstring should be a single sentence describing the module's 
+purpose.
+
+```python
+#!/usr/bin/env python3
+"""Library for testing words for various linguistic patterns.
+
+Testing how words relate to each other can be tricky sometimes!
+This module provides easy ways to determine when words you've found have 
+special properties.
+
+Available functions:
+- palindrome: Determine if a word is a palindrome.
+- check_anagram: Determine if two words are anagrams.
+...
+"""
+# ...
+```
+
+#### Documenting Classes
+
+```python
+class Player(object):
+    """Represents a player of the game.
+    
+    Subclasses may override the ‘tick’ method to provide custom animations for 
+    the player’s movement depending on their power level, etc.
+    
+    Public attributes:
+    - power: Unused power-ups (float between 0 and 1).
+    - coins: Coins found during the level (integer).
+    """
+    # ...
+```
+
+#### Documenting Functions
+
+```python
+def find_anagrams(word, dictionary):
+    """Find all anagrams for a word.
+    
+    This function only runs as fast as the test for membership in the 
+    ‘dictionary’ container. It will be slow if the dictionary is a list and 
+    fast if it’s a set.
+    
+    Args:
+        word: String of the target word.
+        dictionary: Container with all strings that are known to be actual 
+            words.
+    
+    Returns:
+        List of anagrams that were found. Empty if none were found.
+    """
+    # ...
+```
+
+
+### Item 50: Use Package to Organize Modules and Provide Stable APIs
+
+*Packages* are modules that contain other modules.
+
+When you're writing an API for wider consumption, you'll want to provide stable 
+functionality that doesn't change between releases. To ensure that happens, 
+it's important to hide your internal code organization from external users. 
+This enables you to refactor and improve your package's internal modules without 
+breaking existing users.
+
+Python can limit the surface area exposed to API consumers by using the `__all__`
+special attribute of a module or package. The value fo `__all__` is a list of 
+every name to export from the module as part of its public API. When consuming 
+code does `from foo import *`, only the attributes in `foo.__all__` will be 
+imported from `foo`. If `__all__` isn't present in `foo`, then only public 
+attributes, those without a leading underscore, are imported.
+
+Define the `models` module of `mypackage` to contain the representation of 
+projectiles:
+```python
+# models.py
+__all__ = ['Projectile']
+
+class Projectile(object):
+    def __init__(self, mass, velocity):
+        self.mass = mass
+        self.velocity = velocity
+
+# Also define a utils module in mypackage to perform operations on the 
+# Projectile instances.
+
+# utils.py
+from . models import Projectile
+
+__all__ = ['simulate_collision']
+
+def _dot_product(a, b):
+    # ...
+
+def simulate_collision(a, b):
+    # ...
+
+# To provide all of the public parts of this API as a set of attributes that 
+# are available on the "mypackage" module. This will allow downstream consumers 
+# to always import directly from mypackage instead of imprting from "mypackage.
+# models" or "mypackage.utils". This ensures that the API consumer's code will 
+# continue to work even if the internal organization of "mypackage" changes.
+
+# To do this with Python packages, you need to modify the "__init__.py" file in 
+# the "mypackage" directory. This file actually becomes the contents of the "
+# mypackage" module when it's imported.
+
+# __init__.py
+__all__ = []
+from . models import *
+__all__ += models.__all__
+from . utils import *
+__all__ += utils.__all__
+
+# api_consumer.py
+from mypackage import *
+a = Projectile(1.4, 3)
+b = Projectile(3, 1.6)
+after_a, after_b = simulate_collision(a, b)
+```
+
+However, if you're building an API for use between your own modules, the 
+functionality of `__all__` is probably unnecessary and should be avoided.
 
 
 ### Item 51: Define a Root EXception to Insulate Callers from APIs
