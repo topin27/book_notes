@@ -27,10 +27,11 @@ Instances of unicode contain Unicode characters.
 
 In Python 2, unicode and str instances seem to be the same type when a str only 
 contains 7-bit ASCII characters.
-	* You can combine such a str and unicode together using the + operator.
-	* You can compare such str and unicode instances using equality and 
-	  inequality operators.
-	* You can use unicode instances for format strings like "%s".
+* You can combine such a str and unicode together using the + operator.
+* You can compare such str and unicode instances using equality and inequality 
+  operators.
+* You can use unicode instances for format strings like "%s".
+
 But in Python 3, bytes and str instances are never equivalent--not even the 
 empty string--so you must be more deliberate about the types of character.
 
@@ -2021,6 +2022,9 @@ functionality of `__all__` is probably unnecessary and should be avoided.
 
 ### Item 51: Define a Root EXception to Insulate Callers from APIs
 
+Having a root exception in a module makes it easy for consumers of your API to 
+catch all of the exceptions that you raise on purpose.
+
 * Defining root exceptions for your modules allows API consumers to insulate 
   themselves from you API.
 * Catching root exceptions can help you find bugs in code that consumes an API.
@@ -2028,3 +2032,326 @@ functionality of `__all__` is probably unnecessary and should be avoided.
   implementations.
 * Intermediate root exceptions let you add more specific types of exceptions in 
   the future without breaking your API consumers.
+
+
+### Item 52: Know How to Break Circular Dependencies
+
+```python
+# dialog.py
+import app
+
+class Dialog(object):
+    def __init__(self, save_dir):
+        self.save_dir = save_dir
+    # ...
+save_dialog = Dialog(app.prefs.get('save_dir'))
+def show():
+    # ...
+
+# app.py
+import dialog
+
+class Prefs(object):
+    # ...
+    def get(self, name):
+        # ...
+
+prefs = Prefs()
+dialog.show()
+```
+It's a circular dependency. If you try to use the `app` module from your main 
+program, you'll get an exception when you import it.
+
+When a module is imported, here's what Python actually does in depth-first 
+order:
+1. Searches for your module in locations from `sys.path`
+2. Loads the code from the module and ensures that it compiles
+3. Creates a corresponding empty module object
+4. Inserts the module into `sys.modules`
+5. Runs the code in the module object to define its contents
+The problem with a circular dependency is that the attributes of a module are't 
+defined until the code for those attributes has executed(after step #5). But 
+the module can be loaded with the `import` statement immediately after it's 
+inserted into `sys.modules`(after step #4).
+
+There are three other ways to break circular dependencies:
+
+#### Reordering Imports
+
+```python
+# app.py
+class Prefs(object):
+    # ...
+prefs = Prefs()
+
+import dialog
+dialog.show()
+```
+Although this avoids the `AttributeError`, it goes against the PEP 8 style 
+guide. The style guide suggests that you always put imports at the top of your 
+Python files. Thus, you should avoid import reordering to solve your circular 
+dependency issues.
+
+#### Import, Configure, Run
+
+A second solution to the circular imports problem is to have your modules 
+minimize side effects at import time. You have your modules only define 
+functions, classes, and constants. You avoid actually running any functions at 
+import time.
+```python
+# dialog.py
+import app
+
+class Dialog(object):
+    # ...
+
+save_dialog = Dialog()
+
+def show():
+    # ...
+
+def configure():
+    save_dialog.save_dir = app.prefs.get('save_dir')
+
+# app.py
+import dialog
+
+class Prefs(object):
+    # ...
+
+prefs = Prefs()
+
+def configure():
+    # ...
+
+# main.py
+import app
+import dialog
+
+app.configure()
+dialog.configure()
+
+dialog.show()
+```
+
+#### Dynamic Import
+
+The third-and often simplest-solution to the circular imiports problem is to 
+use an `import` statement within a function or method. This is called a *dynamic 
+import* because the module import happens while the program is running.
+
+```python
+# dialog.py
+class Dialog(object):
+    # ...
+
+save_dialog = Dialog()
+
+def show():
+    import app
+    save_dialog.save_dir = app.prefs.get('save_dir')
+
+# app.py
+import dialog
+
+class Prefs(object):
+    # ...
+
+prefs = Prefs()
+dialog.show()
+```
+
+
+### Item 53: Use Virtual Environments for Isolated and Reproducible Dependencies
+
+`pyvenv` allows you to create isolated versions of the Python environment. Using 
+`pyvenv`, you can have many different versions of the same package installed on 
+the same system at the same time without conflicts.
+
+#### The `pyvenv` Command
+
+```sh
+$ pyvenv /tmp/myproject
+$ cd /tmp/myproject
+$ ls
+bin     include     lib     pyvenv.cfg
+$ source bin/activate
+(myproject)$ which python3
+/tmp/myproject/bin/python3
+(myproject)$ pip3 install pytz
+(myproject)$ deactivate
+$ which python3
+/usr/local/bin/python3
+```
+
+#### Reproducing Dependencies
+
+Eventually, you may want to copy your environment somewhere else.
+
+```sh
+(myproject)$ pip3 freeze > requirements.txt
+$ pyvenv /tmp/otherproject
+$ cd /tmp/otherproject
+$ source bin/activate
+(otherproject)$ pip3 install -r /tmp/myproject/requirements.txt
+```
+
+
+----------
+
+8. Production
+
+
+### Item 54: Consider Module-Scoped Code to Configure Deployment Environments
+
+```python
+# dev_main.py
+TESTING = True
+import db_connection
+db = db_connection.Database()
+
+# prod_main.py
+TESTING = False
+import db_connection
+db = db_connection.Database()
+
+# db_connection.py
+import __main__
+
+class TestingDatabase(object):
+    # ...
+class RealDatabase(object):
+    # ...
+
+if __main__.TESTING:
+    Database = TestingDatabase
+else:
+    Database = RealDatabase
+```
+
+```python
+# db_connection.py
+import sys
+class Win32Database(object):
+    # ...
+class PosixDatabase(object):
+    # ...
+
+if sys.platform.startwith('win32'):
+    Database = Win32Database
+else:
+    Database = PosixDatabase
+```
+
+
+### Item 55: Use `repr` Strings for Debugging Output
+
+The `print` function outputs a human-readable string version of whatever you 
+supply it. The problem is that the human-readble string for a value doesn't make 
+it clear what the actual type of the value is.
+```python
+print(5)
+>>> 5
+print('5')
+>>> 5
+```
+If you're debugging a program with `print`, these type differences matter.
+
+The `repr` built-n function returns the *printable representation* of an object,
+which should be its most clearly understandable string representation.
+```python
+a = '\x07'
+print(repr(a))
+>>> '\x07'
+print(repr(5))
+>>> 5
+print(repr('5'))
+>>> '5'
+```
+
+Passing the value from `repr` to the `eval` built-in function should result in 
+the same Python object you start with.
+```python
+b = eval(repr(a))
+assert b == a
+```
+
+For dynamic Python objects, the default human-readable string value is the same 
+as the `repr` value. Unfortunately, the default value of `repr` ofr `object` 
+instance isn't especially helpful.
+```python
+class OpaqueClass(object):
+    def __init__(self, x, y):
+        # ...
+obj = OpaqueClass(1, 2)
+print(obj)
+>>> <__main__.OpaqueClass object at 0x107990ba8>
+```
+This output can't be passed to the `eval` function, and it says nothing about 
+the instance fields of the object.
+
+If you have control of the class:
+```python
+class BetterClass(object):
+    def __init__(self, x, y):
+        # ...
+    def __repr__(self):
+        return 'BetterClass(%d, %d)' % (self.x, self.y)
+obj = BetterClass(1, 2)
+print(obj)
+>>> BetterClass(1, 2)
+```
+
+If you don't have control over the class definition:
+```python
+obj = OpaqueClass(4, 5)
+pritn(obj.__dict__)
+>>> {'y': 5, 'x': 4}
+```
+
+
+### Item 56: Test Everything with `unittest`
+
+* You can define tests by subclassing `TestCase` and defining one method per 
+  behavior you'd like to test. Test methods on `TestCase` classes must start 
+  with the word `test`.
+* It's important to write both unit tests(for isolated functionality) and 
+  integration tests(for modules that interact).
+
+
+### Item 57: Consider Interactive Debugging with `pdb`
+
+```python
+def complex_func(a, b, c):
+    # ...
+    import pdb; pdb.set_trace() # A single line so can be commented easily.
+```
+
+command: "bt", "up", "down"
+
+
+### Item 58: Profile Before Optimizing
+
+Python provides a built-in *profiler* for determining which parts of a program 
+are responsible for its execution time. This lets you focus your optimization 
+efforts on the biggest sources of trouble and ignore parts of the program that 
+don't impact speed.
+
+Python provides two built-in profilers, one that is pure Python(profile) and 
+another that is a C-extension module(cProfile). The `cProfile` built-in module 
+is better because of its minimal impact on the performance of your program 
+while it's being profiled.
+
+
+### Item 59: Use `tracemalloc` to Understand Memory Usage and Leaks
+
+In practice, programs eventually do run out of memory due to held references. 
+
+The first way to debug memory usage is to ask the `gc` built-in module to list 
+every object currently known by the garbage collector.
+
+The `gc` module can help you understand which objects exist, but it has no 
+infomation about how they were allocated.
+
+Python 3.4 introduces a new `tracemalloc` built-in module, makes it possible to 
+connect an object back to where it was allocated.
