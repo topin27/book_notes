@@ -1,5 +1,6 @@
 ----------
 
+
 ## 1. Bash and Bash scripts
 
 ### 1.2. Advantages of the Bourne Again Shell
@@ -10,6 +11,7 @@
 
 A *interactive login shell* means that you got the shell after authenticating 
 to the system, files read:
+
 * `/etc/profile`
 * `~/.bash_profile`, `~/.bash_login` or `~/.profile`
 * `~/.bash_logout` upon logout.
@@ -17,6 +19,7 @@ to the system, files read:
 A *interactive non-login shell* means that you did not have to authenticate to 
 the system, for instance, when you open a terminal, that is a non-login shell. 
 Files read: 
+
 * `~/.bashrc`, this file is usually referred to in `~/.bash_profile`
 
 
