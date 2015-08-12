@@ -47,9 +47,7 @@ always open the file using a binary mode(like "rb" or "wb").
 
 Defaut value:
 
-	```python
 	red = my_values.get("red", [""])[0] or 0
-	```
 
 The *opacity* case works because the value in the my_values dictionary is 
 missing altogether. The behavior of the `get` method is to return its second 
@@ -57,20 +55,15 @@ argument if the key does not exist in the dictionary.
 
 No:
 
-	```python
 	red = int(my_values.get('red', [''])[0] or 0)
-	```
 	
 Better: (For less complicated situations)
 
-	```python
 	red = my_values.get('red', [''])
 	red = int(red[0]) if red[0] else 0  # if/else conditional, Added in Python 2.5
-	```
 
 Best: (Especially if you need to use this logic repeatedly)
 
-	```python
 	def get_first_int(values, key, default=0):
 	    found = values.get(key, [''])
 	    if found[0]:
@@ -78,7 +71,6 @@ Best: (Especially if you need to use this logic repeatedly)
 	    else:
 	        found = default
 	    return found
-	```
 
 ### Item 5: Know How to Slice Sequences
 
@@ -88,10 +80,8 @@ and `__setitem__` special methods.
 If you leave out both the start and the end indexes when slicing, you will end 
 up with a copy of the original list.
 
-	```python
 	b = a[:]
 	assert b == a and b is not a
-	```
 
 If you assign a slice with no start or end indexes, you will replace its entire 
 contents with a copy of what is referenced(instead of allocating a new list).
@@ -106,18 +96,14 @@ stride) or using *islice* from the *itertools* built-in module.
 
 ### Item 7: Use List Comprehensions Instead of map and filter
 
-	```python
 	even_squares = [x**2 for x in a if x % 2 == 0]
-	```
 
 Dictionaries and sets have their own equivalents of list comprehensions. These 
 make it easy to create derivative data structures when writing algorithms.
 
-	```python
 	chile_ranks = {'ghost': 1, 'habanero': 2, 'cayenne': 3}
 	rank_dict = {rank: name for name, rank in chile_ranks.items()}
 	chile_len_set = {len(name) for name in rank_dict.values()}
-	```
 
 List comprehensions allow you to easily skip items from the input list, a 
 behavior map does not support without help from filter.
@@ -125,22 +111,18 @@ behavior map does not support without help from filter.
 
 ### Item 8: Avoid More Than Two Expressions in List Comprehensions
 
-	```python
 	matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 	flat = [x for row in matrix for x in row]
 	print(flat)
 	>>> [1, 2, 3, 4, 5, 6, 7, 8, 9]
 	squared = [[x**2 for x in row] for row in matrix]
-	```
 
 List comprehensions also support multiple if conditions. Multiple conditions at 
 the same loop level are an implicit and expression.
 
-	```python
 	a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 	b = [x for x in a if x > 4 if x % 2 == 0]
 	c = [x for x in a if x > 4 and x % 2 == 0] # Equivalent
-	```
 
 
 ### Item 9: Consider Generator Expressions for Large Comprehensions
@@ -150,9 +132,7 @@ containing one item for each value in the input sequences. This is fine for
 small inputs, but for file which is absolutely enormous or perhaps a never-
 ending network socket, list comprehensions are problematic.
 
-	```python
 	value = [len(x) for x in open('/tmp/my_file.txt')]
-	```
 
 To solve this, Python provides generator expressions, it do not materialize the 
 whole output sequence when they are run. Instead, generator expressions evaluate 
@@ -161,18 +141,14 @@ to an iterator that yields one item at a time from the expression.
 A generator expression is created by putting list-comprehension-like syntax 
 between `()` characters:
 
-	```python
 	it = (len(x) for x in open('/tmp/my_file.txt'))
 	print(next(it))
 	print(next(it))
-	```
 
 Another powerful outcome of generator expressions is that they can be composed 
 together.
 
-	```python
 	roots = ((x, x**0.5) for x in it)
-	```
 
 Chaining generators like this executes very quickly in Python. When you are 
 looking for a way to compose functionality that is operating on a large stream 
@@ -186,49 +162,39 @@ stateful, so you must be careful not to use them more than once.
 
 No:
 
-	```python
 	for i in range(len(flavor_list)):
 	    flavor = flavor_list[i]
-	```
 
 Yes:
 
-	```python
 	for i, flavor in enumerate(flavor_list):
 	    pass
-	```
 
 
 ### Item 11: Use `zip` to Process Iterators in Parallel
 
 No:
 
-	```python
 	for i in range(len(names)):
 	    count = letters[i]
 	    if count > max_letters:
 	        longest_name = names[i]
 	        max_letters = count
-	```
 
 Better:
 
-	```python
 	for i, name in enumerate(names):
 	    count = letters[i]
 	    if count > max_letters:
 	        longest_name = name
 	        max_letters = count
-	```
 
 Best:
 
-	```python
 	for name, count in zip(names, letters):
 	    if count > max_letters:
 	        longest_name = name
 	        max_letters = count
-	```
 
 There are two problems with the `zip` built-in. The first issue is that in 
 Python 2 `zip` is not a generator, it will exhaust the supplied iterators and 
@@ -270,7 +236,6 @@ are of different lengths.
 
 ### Item 15: Know How Closures Interact with Variable Scope
 
-	```python
 	def sort_priority(values, group):
 	    def helper(x):
 	        if x in group:
@@ -282,7 +247,6 @@ are of different lengths.
 	sort_priority(numbers, group)
 	print(numbers)
 	>>> [2, 3, 5, 7, 1, 4, 6, 8]
-	```
 
 Python has specific rules for comparing tuples. It first compares items in index 
 zero, then index one, then index two, and so on. This is why the return value 
@@ -299,7 +263,6 @@ nonlocal` statement is used to indicate that scope traversal should happen upon
 assignment for a specific variable name. The only limit is that `nonlocal` will 
 not traverse up to the module-level scope(to avoid polluting globals).
 
-	```python
 	def sort_priority3(numbers, group):
 	    found = False
 	    def helper(x):
@@ -310,12 +273,10 @@ not traverse up to the module-level scope(to avoid polluting globals).
 	        return (1, x)
 	    numbers.sort(key=helper)
 	    return found
-	```
 
 When your usage of `nonlocal` starts getting complicated, it is better to wrap 
 your state in a helper class.
 
-	```python
 	class Sorter(object):
 	    def __init__(self, group):
 	        self.group = group
@@ -328,12 +289,10 @@ your state in a helper class.
 	sorter = Sorter(group)
 	numbers.sort(key=sorter)
 	assert sorter.found is True
-	```
 
 Unfortunately, Python 2 does not support the `nonlocal` keyword. You need to 
 use a work-around that takes advantage of Pythons scoping rules.
 
-	```python
 	def sort_priority(numbers, group):
 	    found = [False]
 	    def helper(x):
@@ -343,14 +302,12 @@ use a work-around that takes advantage of Pythons scoping rules.
 	        return (1, x)
 	    numbers.sort(key=helper)
 	    return found[0]
-	```
 
 
 ### Item 16: Consider Generators Instead of Returning Lists
 
 No:
 
-	```python
 	def index_words(text):
 	    result = []
 	    if text:
@@ -359,25 +316,20 @@ No:
 	        if letter == ' ':
 	            result.append(index + 1)
 	    return result
-	```
 
 Yes:
 
-	```python
 	def index_words_iter(text):
 	    if text:
 	        yield 0
 	    for index, letter in enumerate(text):
 	        if letter == ' ':
 	            yield index + 1
-	```
 
 The iterator returned by the generator call can easily be converted to a list 
 by passing it to the `list` built-in function
 
-	```python
 	result = list(index_words_iter(address))
-	```
 
 The only gotcha of defining generators like this is that the callers must be 
 aware that the iterators returned are stateful and can not be reused.
@@ -388,7 +340,6 @@ aware that the iterators returned are stateful and can not be reused.
 When a function takes a list of objects as a parameter, it is often important 
 to iterate over that list multiple times.
 
-	```python
 	def normalize(numbers):
 	    total = sum(numbers)    # first iterate the iterator
 	    result = []
@@ -406,7 +357,6 @@ to iterate over that list multiple times.
 	percentages = normalize(it)
 	print(percentages)
 	>>> []      # Surprisingly!!
-	```
 
 The cause of this behavior is that an iterator obly produces its results a 
 single time. If you iterate over an iterator or generator that has already 
@@ -416,7 +366,6 @@ time around.
 To solve this problem, you can explicitly exhaust an input iterator and keep a 
 copy of its entire contents in a list.
 
-	```python
 	def normalize_copy(numbers):
 	    numbers = list(numbers)
 	    total = sum(numbers)
@@ -425,13 +374,11 @@ copy of its entire contents in a list.
 	        percent = 100 * value / total
 	        result.append(percent)
 	    return result
-	```
 
 The problem with this approach is the copy of the input iterators contents 
 counld be large. One way around this is to accept a function that returns a new 
 iterator each time it is called.
 
-	```python
 	def normalize_func(get_iter):
 	    total = sum(get_iter())
 	    result = []
@@ -441,7 +388,6 @@ iterator each time it is called.
 	    return result
 	
 	percentages = normalize_func(lambda: read_visits(path))
-	```
 
 The better way to achieve the same result is to provide a new container class 
 that implements the *iterator protocol*. The iterator protocol is how Python 
@@ -453,7 +399,6 @@ implements the `__next__` special method). Then the `for` loop repeatedly calls
 the `next` built-in function on the iterator object until it is exhausted(and 
 raise a `StopIteration` exception).
 
-	```python
 	class ReadVisits(object):
 	    def __init__(self, data_path):
 	        self.data_path = data_path
@@ -465,7 +410,6 @@ raise a `StopIteration` exception).
 	percentages = normalize(visits)
 	print(percentages)
 	>>> [11.53, 26.92, 61.53]
-	```
 
 This works because the `sum` method in `normalize` will call 
 `ReadVisits.__iter__` to allocate a new iterator object. The `for` loop to 
@@ -485,13 +429,11 @@ of inputs in the argument list will be reasonably small.
 You can use the items from a sequence as the positional arguments for a function 
 with the `\*` operator.
 
-	```python
 	def log(message, *values):
 	    pass
 	
 	favorites = [7, 39, 99]
 	log('Favorite colors', *favorites)      # * operator
-	```
 
 Using the `\*` operator with a generator may cause your program to run out of 
 memory and crash.
@@ -505,7 +447,6 @@ function, especially when the function has existing callers.
 
 ### Item 20: Use `None` and Docstrings to Specify Dynamic Default Arguments
 
-	```python
 	def log(message, when=datetime.now()):
 	    print('%s: %s' % (when, message))
 	log('Hi there!')
@@ -513,13 +454,11 @@ function, especially when the function has existing callers.
 	log('Hi again')
 	>>>2014-11-15   21:10:10.371432:    Hi  there!
 	2014-11-15  21:10:10.371432:    Hi  again!
-	```
 
 The timestamps are the same because `datetime.now()` is only executed a single 
 time: when the function is defined. Default argument values are evaluated only 
 once per module load, which usually happens when a program starts up.
 
-	```python
 	def log(message, when=None):
 	    '''Log a message with a timestamp.
 	    Args:
@@ -529,7 +468,6 @@ once per module load, which usually happens when a program starts up.
 	    '''
 	    when = datetime.now() if when is None else when
 	    print('%s: %s' % (when, message))
-	```
 
 
 ### Item 21: Enforce Clarity with Keyword-Only Arguments
@@ -537,12 +475,10 @@ once per module load, which usually happens when a program starts up.
 In Python 3, you can demand clarity by defining your functions with keyword-only 
 arguments.
 
-	```python
 	def safe_division_c(number, divisor, *, 
 	                    ignore_overflow=False,
 	                    ignore_zero_division=False):
 	    pass
-	```
 
 Now, calling the function with positional arguments for the keyword arguments 
 will not work.
@@ -552,13 +488,11 @@ only arguments like Python 3. But you can achieve the same behavior of raising
 `TypeError` for invalid function calls by using the `**` operator in argument 
 lists.
 
-	```python
 	def safe_division_d(number, divisor, **kwargs):
 	    ignore_overflow = kwargs.pop('ignore_overflow', False)
 	    ignore_zero_division = kwargs.pop('ignore_zero_division', False)
 	    if kwargs:
 	        raise TypeError('Unexpected **kwargs: %r' % kwargs)
-	```
 
 
 ---------
@@ -583,7 +517,6 @@ consider another approach.
 
 ### Item 23: Accept Functions for Simple Interfaces Instead of Classes
 
-	```python
 	class CountMissing(object):
 	    def __init__(self):
 	        self.added = 0
@@ -592,11 +525,9 @@ consider another approach.
 	        return 0
 	counter = CountMissing()
 	result = defaultdict(counter.missing, current)
-	```
 
 Much better:
 
-	```python
 	class BetterCountMissing(object):
 	    def __init__(self):
 	        self.added = 0
@@ -606,7 +537,6 @@ Much better:
 	counter = BetterCountMissing()
 	assert callable(counter)
 	result = defaultdict(counter, current)  # Relies on __call__
-	```
 
 When you need a function to maintain state, consider defining a class that 
 provides the `__call__` method instead of defining a stateful closure.
@@ -617,7 +547,6 @@ provides the `__call__` method instead of defining a stateful closure.
 In Python, not only do the objects support polymorphism, but the classes do as 
 well.
 
-	```python
 	class InputData(object):
 	    def read(self):
 	        raise NotImplementedError
@@ -675,14 +604,12 @@ well.
 	with TemporaryDirectory() as tmpdir:
 	    write_test_files(tmpdir)
 	    result = mapreduce(tmpdir)
-	```
 
 The huge issue is the `mapreduce` function is not generic at all. The best way 
 to solve this problem is with `@classmethod` polymorphism. This is exactly like 
 the instance method polymorphism I used for `InputData.read`, except that it 
 applies to whole classes instead of their constructed objects.
 
-	```python
 	class GenericInputData(object):
 	    def read(self): 
 	        raise NotImplementedError
@@ -724,7 +651,6 @@ applies to whole classes instead of their constructed objects.
 	    write_test_files(tmpdir)
 	    confg = {'data_dir': tmpdir}
 	    result = mapreduce(LineCountWorker, PathInputData, config)
-	```
 
 Now you can write other `GenericInputData` and `GenericWorker` classes as you 
 wish and not have to rewrite any of the glue code.
@@ -735,7 +661,6 @@ wish and not have to rewrite any of the glue code.
 The old way to initialize a parent class from a child class is to directly call 
 the parent classs `__init__` method with the child instance.
 
-	```python
 	class MyBaseClass(object):
 	    def __init__(self, value):
 	        self.value = value
@@ -743,13 +668,11 @@ the parent classs `__init__` method with the child instance.
 	class MyChildClass(MyBaseClass):
 	    def __init__(self):
 	        MyBaseClass.__init__(self, 5)
-	```
 
 This approach works fine for simple hierarchies but breaks down in many cases. 
 If your class is affected by multiple inheritance, calling the superclasses `
 __init__` methods directly can lead to unpredictable behavior.
 
-	```python
 	class TimesFive(MyBaseClass):
 	    def __init__(self, value):
 	        MyBaseClass.__init__(self, value)
@@ -768,12 +691,10 @@ __init__` methods directly can lead to unpredictable behavior.
 	foo = ThisWay(5)
 	print('(5 * 5) + 2 = 27 but is ', foo.value)
 	>>> (5 * 5) + 2 = 27 but is 7
-	```
 
 To solve these problems, Python 2.2 added `super` built-in function and defined 
 the *method resolution order*(MRO).
 
-	```python
 	class TimesFiveCorrect(MyBaseClass):
 	    def __init__(self, value):
 	        super(TimesFiveCorrect, self).__init__(value)
@@ -798,7 +719,6 @@ the *method resolution order*(MRO).
 	<class  ‘__main__.PlusTwoCorrect’>,
 	<class  ‘__main__.MyBaseClass’>,
 	<class  ‘object’>]
-	```
 
 When I call `GoodWay(5)`, it in turn calls `TimesFiveCorrect.__init__`, which 
 calls `PlusTwoCorrect.__init__`, which calls `MyBaseClass.__init__`. Once this 
@@ -808,7 +728,6 @@ called.
 
 But the syntax is a bit verbose. Python 3 fixes these issues:
 
-	```python
 	class Explicit(MyBaseClass):
 	    def __init__(self, value):
 	        super(__class__, self).__init__(value * 2)
@@ -818,7 +737,6 @@ But the syntax is a bit verbose. Python 3 fixes these issues:
 	        super().__init__(value * 2)
 	
 	assert Explicit(10).value == Implicit(10).value
-	```
 
 
 ### Item 26: Use Multiple Inheritance Only for Mix-in Utility Classes
@@ -852,16 +770,13 @@ there are no attribute names that overlap with child classes.
 Python implements its container behaviors with instance methods that have 
 special names. When you access a sequence item by index:
 
-	```python
 	bar = [1, 2, 3]
 	bar[0]
-	```
-	it will be interpreted as:
-	```python
-	bar.__getitem__(0)
-	```
 
-	```python
+it will be interpreted as:
+
+	bar.__getitem__(0)
+
 	class FrequencyList(list):  # a container type that subclass from built-in list
 	    def __init__(self, members):
 	        super().__init__(members)
@@ -880,7 +795,6 @@ special names. When you access a sequence item by index:
 	Length  is  7
 	After   pop:    [‘a’,   ‘b’,    ‘a’,    ‘c’,    ‘b’,    ‘a’]
 	Frequency:  {‘a’:   3,  ‘c’:    1,  ‘b’:    2}
-	```
 
 But if you want to provide an object that feels like a `list`, but it is not a 
 `list` subclass, you need to implements `__getitem__`, `__len__` and so on.
@@ -906,7 +820,6 @@ natural and clear.
 If you decide you need special behavior when an attribute is set, you can migr-
 ate to the `@property` decorator and its coresponding `setter` attribute.
 
-	```python
 	class Resistor(object):
 	    def __init__(self, ohms):
 	        self.ohms = ohms
@@ -932,12 +845,10 @@ ate to the `@property` decorator and its coresponding `setter` attribute.
 	>>>
 	Before:     0 amps
 	After:   0.01 amps
-	```
 
 Specifying a `setter` on a property also lets you perform type checking and 
 validation on values passed to your class.
 
-	```python
 	class BoundedResistance(Resistor):
 	    def __init__(self, ohms):
 	        super().__init__(ohms)
@@ -955,11 +866,9 @@ validation on values passed to your class.
 	>>> ValueError: 0.000000 ohms must be > 0
 	BoundedResistance(-5)
 	>>> ValueError: -5.000000 ohms must be > 0
-	```
 
 You can even use `@property` to make attributes from parent classes immutable.
 
-	```python
 	class FixedResistance(Resistor):
 	    # ...
 	    @property
@@ -974,7 +883,6 @@ You can even use `@property` to make attributes from parent classes immutable.
 	r4 = FixedResistance(1e3)
 	r4.ohms = 2e3
 	>>> AttributeError: Can’t set attribute
-	```
 
 
 ### Item 30: Consider `@property` Instead of Refactoring Attributes
@@ -984,7 +892,6 @@ instances attributes to act smarter. One advanced but common use of `@property`
 is transitioning what was once a simple numerical attribute into an on-the-fly 
 calculation.
 
-	```python
 	class Bucket(object):
 	    def __init__(self, period):
 	        self.period_delta = timedelta(seconds=period)
@@ -1009,7 +916,6 @@ calculation.
 	        else:
 	            assert self.max_quota >= self.quota_consumed
 	            self.quota_consumed += delta
-	```
 
 
 ### Item 31: use Descriptors for Reusable `@property` Methods
@@ -1018,7 +924,6 @@ The big problem with the `@property` built-in is the methods ti decorates can
 not be reused for multiple attributes of the same class. They also can not be 
 reused by unrelated classes.
 
-	```python
 	class Exam(object):
 	    def __init__(self):
 	        self._writing_grade = 0
@@ -1041,7 +946,6 @@ reused by unrelated classes.
 	    def math_grade(self, value):
 	        self._check_grade(value)
 	        self._math_grade = value
-	```
 
 Also, this approach is not general. It is gets tedious.
 
@@ -1050,7 +954,6 @@ protocol defines how attribute access is interpreted by the language. A descr-
 iptor class can provide `__get__` and `__set__` methods that let you reuse the 
 grade validation behavior without any boilerplate.
 
-	```python
 	class Grade(object):
 	    def __init__(self):
 	        self._value = WeakKeyDictionary()
@@ -1071,7 +974,6 @@ grade validation behavior without any boilerplate.
 	exam = Exam()
 	exam.writing_grade = 40 #==> "Exam.__dict__['writing_grade'].__set__(exam, 40)"
 	print(exam.writing_grade) #==> "Exam.__dict__['writing_grade'.__get__(exam, Exam)]"
-	```
 
 * Reuse the behavior and validation of `@property` methods by defining your own 
   descriptor classes.
@@ -1084,7 +986,6 @@ grade validation behavior without any boilerplate.
 If your class defines `__getattr__`, that method is called every time an attri-
 bute can not be found in an objects instance dictionary.
 
-	```python
 	class LazyDB(object):
 	    def __init__(self):
 	        sef.exists = 5
@@ -1100,14 +1001,12 @@ bute can not be found in an objects instance dictionary.
 	Before: {'exists': 5}
 	foo:    Value for foo
 	After:  {'exists': 5, 'foo': 'Value for foo'}
-	```
 
 Python has another language hook called `__getattribute__`. This special method 
 is called every time an attribute is accessed on an object, even in cases where 
 it **does** exist in the attribute dictionary. This enables you to do things 
 like check global transaction state on every property access.
 
-	```python
 	class ValidatingDB(object):
 	    def __init__(self):
 	        self.exists = 5
@@ -1131,7 +1030,6 @@ like check global transaction state on every property access.
 	foo:    Value for foo
 	Called __getattribute__(foo)
 	foo:    Value for foo
-	```
 
 Python code implementing generic functionality often relies on the `hasattr` 
 built-in function to determine when properties exist, and the `getattr` built-
@@ -1146,7 +1044,6 @@ the `setattr` built-in function).
 The problem with `__getattribute__` and `__setattr__` is that they are called on 
 every attribute access for an object, even when you may not want that to happen.
 
-	```python
 	class BrokenDictionaryDB(object):
 	    def __init__(self, data):
 	        self._data = {}
@@ -1162,21 +1059,18 @@ every attribute access for an object, even when you may not want that to happen.
 	...
 	Traceback ...
 	RuntimeError: maximum recursion depth exceeded
-	```
 
 The problem is that `__getattribute__` accesses `self._data`, which causes `
 __getattribute__` to run again, which accesses `self._data` again, and so on.
 The solution is to use the `super().__getattribute__` method on your instance 
 to fetch values from the instance attribute dictionary.
 
-	```python
 	class DictionaryDB(object):
 	    def __init__(self, data):
 	        self._data = data
 	    def __getattribute__(self, name):
 	        data_dict = super().__getattribute__('_data')
 	        return data_dict[name]
-	```
 
 Similarly, you will need `__setattr__` methods that modify attributes on an 
 object to use `super().__setattr__`.
@@ -1190,7 +1084,6 @@ want to enforce sytle, require overriding methods, or and so on. Using
 metaclasses for validation can raise errors much earlier. A metaclass is 
 defined by inheriting from `type`.
 
-	```python
 	class Meta(type):
 	    def __new__(meta, name, bases, class_dict):
 	        print((meta, name, bases, class_dict))
@@ -1209,7 +1102,6 @@ defined by inheriting from `type`.
 	  ‘__qualname__’: ‘MyClass’,
 	  ‘foo’: <function MyClass.foo at 0x102c7dd08>,
 	  ‘stuff’: 123})
-	```
 
 The metaclass has access to the name of the class, the parent classes it 
 inherits form, and all of the class attributes that were defined in the classs 
@@ -1218,7 +1110,6 @@ body.
 Python 2 has slightly different syntax and specifies a metaclass using the `
 __metaclass__` class attribute.
 
-	```python
 	class Meta(type):
 	    def __new__(meta, name, bases, class_dict):
 	        # ...
@@ -1226,7 +1117,6 @@ __metaclass__` class attribute.
 	class MyClassInPython2(object):
 	    __metaclass__ = Meta
 	    # ...
-	```
 
 You can add functionality to the `Meta.__new__` method in order to validdate 
 all of the parameters of a class before it is defined.
@@ -1240,7 +1130,6 @@ body has been processed.
 Another common use of metaclasses is to automatically register types in your 
 program.
 
-	```python
 	class BetterSerializable(object)
 	    def __init__(self, \*args):
 	        sefl.args = args
@@ -1271,7 +1160,6 @@ program.
 	print('Serialized: ', data)
 	after = deserialize(data)
 	print('After: ', after)
-	```
 
 Now, I can deserialize an arbitrary JSON string without having to know which 
 class it contains. The problem with this approach is that you can forget to 
@@ -1280,7 +1168,6 @@ call `register_class`.
 Metaclasses enable this by intercepting the `class` statement when subclasses 
 are defined.
 
-	```python
 	class Meta(type):
 	    def __new__(meta, name, bases, class_dir):
 	        cls = type.__new__(meta, name, bases, class_dict)
@@ -1292,7 +1179,6 @@ are defined.
 	    def __init__(self, x, y, z):
 	        super().__init__(x, y, z)
 	        self.x, self.y, self.z = x, y, z
-	```
 
 Using metaclasses for class regisration ensures that you will never miss a 
 class as long as the inheritance tree is right.
@@ -1300,7 +1186,6 @@ class as long as the inheritance tree is right.
 
 ### Item 35: Annotate Class Attributes with Metaclasses
 
-	```python
 	class Field(object):
 	    def __init__(self, name):
 	        self.name = name
@@ -1324,11 +1209,9 @@ class as long as the inheritance tree is right.
 	>>>
 	Before: '' {}
 	After: 'Euclid' {‘_first_name’: ‘Euclid’}
-	```
 
 To eliminate the redundancy, use the metaclass.
 
-	```python
 	class Meta(type):
 	    def __new__(meta, name, bases, class_dict):
 	        for key, value in class_dict.items():
@@ -1357,7 +1240,6 @@ To eliminate the redundancy, use the metaclass.
 	>>>
 	Before: '' {}
 	After: 'Euler' {'_first_name': 'Euler'}
-	```
 
 
 -----------
@@ -1386,19 +1268,16 @@ Child processes started by Python are able to run in parallel, enabling you to
 use Python to consume all of the CPU cores of your machine and maximize the 
 throughput of your programs.
 
-	```python
 	proc = subprocess.Popen(['echo', 'hello from the child!'], 
 	                        stdout=subprocess.PIPE)
 	out, err = proc.communicate()
 	print(out.decode('utf-8'))
 	>>> hello from the child!
-	```
 
 Child processes will run independently from their parent process, the Python 
 interpreter. Their status can be polled periodically while Python does other 
 work.
 
-	```python
 	proc = subprocess.Popen(['sleep', '0.3'])
 	while proc.poll() is None:
 		print('working...')
@@ -1407,12 +1286,10 @@ work.
 	working...
 	working...
 	exit status 0
-	```
 
 Decoupling the child process from the parent means that the parent process is 
 free to run many child processes in parallel.
 
-	```python
 	def run_sleep(period):
 	    proc = subprocess.Popen(['sleep', str(period)])
 	    return proc
@@ -1422,12 +1299,10 @@ free to run many child processes in parallel.
 	    procs.append(proc)
 	for proc in procs:
 	    proc.communicate()  # Get the result of the command and wait for the end.
-	```
 
 You can also pipe data from your Python program into a subprocess and retrieve 
 its output. This allows you to utilize other programs to do work in parallel.
 
-	```python
 	def run_openssl(data):
 	    env = os.environ.copy()
 	    env['password'] = b'\xe23u\n\xdoq13s\x11'
@@ -1453,7 +1328,6 @@ its output. This allows you to utilize other programs to do work in parallel.
 	for proc in hash_procs:
 	    out, err = proc.communicate()
 	    print(out.strip())
-	```
 
 Use the `timeout` parameter with `communicate` to avoid deadlocks and hanging 
 child processes.
@@ -1522,7 +1396,6 @@ For example, say you want to build a system that will take a constant stream of
 images from your digital camera, resize them, and then add them to a photo 
 gallery online.
 
-	```python
 	class MyQueue(object):
 	    def __init__(self):
 	        self.items = deque()
@@ -1571,7 +1444,6 @@ gallery online.
 	while len(done_queue.items) < 1000:
 	    # Do something useful while waiting
 	    # ...
-	```
 
 When the worker functions vary in speeds, an earlier phase can prevent progress 
 in later phases, backing up the pipeline. This causes later phases to starve 
@@ -1593,7 +1465,6 @@ functionality you need to solve these problems.
 Queue eliminates the busy waiting in the worker by making the `get` method 
 block until new data is available.
 
-	```python
 	queue = Queue()
 	def consumer():
 	    print('Consumer waiting')
@@ -1610,12 +1481,10 @@ block until new data is available.
 	Producer putting
 	Consumer done
 	Producer done
-	```
 
 To solve the pipeline backup issue, the `Queue` class lets you specify the 
 maximum amount of pending work you will allow between two phases.
 
-	```python
 	queue = Queue(1)    # Buffer size of 1
 	def consumer():
 	    time.sleep(0.1)
@@ -1637,11 +1506,9 @@ maximum amount of pending work you will allow between two phases.
 	Producer put 2
 	Consumer got 2
 	Producer done
-	```
 
 The `Queue` class also track the progress of work using the `task_done` method. 
 
-	```python
 	in_queue = Queue()
 	def consumer():
 	    work = in_queue.get()   # Done second
@@ -1651,11 +1518,9 @@ The `Queue` class also track the progress of work using the `task_done` method.
 	Thread(target=consumer).start()
 	in_queue.put(object())      # Done first
 	in_queue.join()             # Done fourth
-	```
 
 Put all of these together:
 
-	```python
 	class CloseableQueue(Queue):
 	    SENTINEL = object()
 	    def close(self):
@@ -1695,7 +1560,6 @@ Put all of these together:
 	resize_queue.join()
 	upload_queue.close()
 	upload_queue.join()
-	```
 
 
 ### Item 40: Consider Coroutines to Run Many Functions Concurrently
@@ -1714,7 +1578,6 @@ less than 1KB of memory until they are exhausted.
 Coroutines work by enabling the code consuming a generator to `send` a value 
 back into the generator function after each `yield` expression.
 
-	```python
 	def my_coroutine():
 	    while True:
 	        received = yield
@@ -1725,12 +1588,10 @@ back into the generator function after each `yield` expression.
 	it.send('Second')
 	>>> Received: First
 	Received: Second
-	```
 
 To implement a generator coroutine that yields the minimum value it has been 
 sent so far.
 
-	```python
 	def minimize():
 	    current = yield
 	    while True:
@@ -1742,7 +1603,6 @@ sent so far.
 	print(it.send(4))
 	print(it.send(22))
 	print(it.send(-1))
-	```
 
 
 ### Item 41: Consider `concurrent.futures` for True Parallelism
@@ -1771,7 +1631,6 @@ the functions they wrap. This allows them to access and modify input arguments
 and return values. This functionality can be useful for enforcing semantics, 
 debugging, registering functions, and more.
 
-	```python
 	def trace(func):
 	    def wrapper(*args, **kwargs):
 	        result = func(*args, **kwargs)
@@ -1784,20 +1643,16 @@ debugging, registering functions, and more.
 	    if n in (0, 1):
 	        return n
 	    return (fibonacci(n - 2), + fibonacci(n - 1))
-	```
 
 The `@` symbol is equivalent to `fibonacci = trace(fibonacci)`. but:
 
-	```python
 	print(fibonacci)
 	>>> <function trace.<locals>.wrapper at 0x107f7ed08>
-	```
 
 The solution is to use the wraps helper function from the `functools` built-in 
 module. Applying it to the `wrapper` function will copy all of the important 
 metadata about the inner function to the outer function.
 
-	```python
 	def trace(func):
 	    @wraps(func)
 	    def wrapper(*args, **kwargs):
@@ -1806,23 +1661,20 @@ metadata about the inner function to the outer function.
 	@trace
 	def fibonacci(n):
 	    # ...
-	```
 
 
 ### Item 43: Consider `contextlib` and `with` Statements for Reusable `try/finally` Behavior
 
-	```python
 	def my_function():
 	    logging.debug('Some debug data')
 	    logging.error('Error log here')
 	    logging.debug('More debug data')
 	my_function()
 	>>> Error log here
-	```
+
 The default log level for my program is `WARNING`, so only the error message 
 will print to screen when I run the function.
 
-	```python
 	@contextmanager
 	def debug_logging(level):
 	    logger = logging.getLogger()
@@ -1845,11 +1697,9 @@ will print to screen when I run the function.
 	More debug data
 	After:
 	Error log here
-	```
 
 Using `with` targets:
 
-	```python
 	@contextmanager
 	def log_level(level, name):
 	    logger = logging.getLogger(name)
@@ -1864,7 +1714,6 @@ Using `with` targets:
 	    logger.debug('This is my message!')
 	    logging.debug('This will not print')
 	>>> This is my message!
-	```
 
 
 ### Item 44: Make `pickle` Reliable with `copyreg`
@@ -1899,11 +1748,9 @@ The `deque` class from the `collections` module is a double-ended queue. It
 provides constant time operations for inserting or removing items from its 
 begining or end.
 
-	```python
 	fifo = deque()
 	fifo = append(1)
 	x = fifo.popleft()
-	```
 
 #### Orderd Dictionary
 
@@ -1918,27 +1765,22 @@ dictionary that keeps track of the order in which its keys were inserted.
 One problem with dictionaries is that you can not assume any keys are already 
 present.
 
-	```python
 	stats = {}
 	key = 'my_counter'
 	if key not in stats:
 	    stats[key] = 0
 	stats[key] += 1
-	```
 
 The `defaultdict` class from the `collections` module simplifies by automatic-
 ally storing a default value when a key does not exist.
 
-	```python
 	stats = defaultdict(int)
 	stats['my_counter'] += 1
-	```
 
 #### Heap Queue
 
 Heaps are useful data structures for maintaining a priority queue.
 
-	```python
 	a = []
 	heappush(a, 5)
 	heappush(a, 3)
@@ -1946,24 +1788,19 @@ Heaps are useful data structures for maintaining a priority queue.
 	heappush(a, 4)
 	print(heappop(a), heappop(a), heappop(a), heappop(a))
 	>>> 3 4 5 7
-	```
 
 #### Bisection
 
 Searching for an item in a `list` takes linear time proportional to its length 
 when you call the `index` method.
 
-	```python
 	x = list(range(10**6))
 	i = x.index(991234)
-	```
 
 The `bisect` modules functions, such as `bisect_left`, provide an efficient 
 binary search through a sequence of sorted items.
 
-	```python
 	i = bisect_left(x, 991234)
-	```
 
 #### Iterator Tools
 
@@ -1998,7 +1835,6 @@ pip.
 The first line of docstring should be a single sentence describing the modules 
 purpose.
 
-	```python
 	#!/usr/bin/env python3
 	"""Library for testing words for various linguistic patterns.
 	
@@ -2012,11 +1848,9 @@ purpose.
 	...
 	"""
 	# ...
-	```
 
 #### Documenting Classes
 
-	```python
 	class Player(object):
 	    """Represents a player of the game.
 	    
@@ -2028,11 +1862,9 @@ purpose.
 	    - coins: Coins found during the level (integer).
 	    """
 	    # ...
-	```
 
 #### Documenting Functions
 
-	```python
 	def find_anagrams(word, dictionary):
 	    """Find all anagrams for a word.
 	    
@@ -2049,7 +1881,6 @@ purpose.
 	        List of anagrams that were found. Empty if none were found.
 	    """
 	    # ...
-	```
 
 
 ### Item 50: Use Package to Organize Modules and Provide Stable APIs
@@ -2072,7 +1903,6 @@ attributes, those without a leading underscore, are imported.
 Define the `models` module of `mypackage` to contain the representation of 
 projectiles:
 
-	```python
 	# models.py
 	__all__ = ['Projectile']
 	
@@ -2118,7 +1948,6 @@ projectiles:
 	a = Projectile(1.4, 3)
 	b = Projectile(3, 1.6)
 	after_a, after_b = simulate_collision(a, b)
-	```
 
 However, if you are building an API for use between your own modules, the 
 functionality of `__all__` is probably unnecessary and should be avoided.
@@ -2140,7 +1969,6 @@ catch all of the exceptions that you raise on purpose.
 
 ### Item 52: Know How to Break Circular Dependencies
 
-	```python
 	# dialog.py
 	import app
 	
@@ -2162,7 +1990,7 @@ catch all of the exceptions that you raise on purpose.
 	
 	prefs = Prefs()
 	dialog.show()
-	```
+
 It is a circular dependency. If you try to use the `app` module from your main 
 program, you will get an exception when you import it.
 
@@ -2184,7 +2012,6 @@ There are three other ways to break circular dependencies:
 
 #### Reordering Imports
 
-	```python
 	# app.py
 	class Prefs(object):
 	    # ...
@@ -2192,7 +2019,6 @@ There are three other ways to break circular dependencies:
 	
 	import dialog
 	dialog.show()
-	```
 
 Although this avoids the `AttributeError`, it goes against the PEP 8 style 
 guide. The style guide suggests that you always put imports at the top of your 
@@ -2206,7 +2032,6 @@ minimize side effects at import time. You have your modules only define
 functions, classes, and constants. You avoid actually running any functions at 
 import time.
 
-	```python
 	# dialog.py
 	import app
 	
@@ -2240,7 +2065,6 @@ import time.
 	dialog.configure()
 	
 	dialog.show()
-	```
 
 #### Dynamic Import
 
@@ -2248,7 +2072,6 @@ The third-and often simplest-solution to the circular imiports problem is to
 use an `import` statement within a function or method. This is called a *dynamic 
 import* because the module import happens while the program is running.
 
-	```python
 	# dialog.py
 	class Dialog(object):
 	    # ...
@@ -2267,7 +2090,6 @@ import* because the module import happens while the program is running.
 	
 	prefs = Prefs()
 	dialog.show()
-	```
 
 
 ### Item 53: Use Virtual Environments for Isolated and Reproducible Dependencies
@@ -2278,7 +2100,6 @@ the same system at the same time without conflicts.
 
 #### The `pyvenv` Command
 
-	```sh
 	$ pyvenv /tmp/myproject
 	$ cd /tmp/myproject
 	$ ls
@@ -2290,19 +2111,16 @@ the same system at the same time without conflicts.
 	(myproject)$ deactivate
 	$ which python3
 	/usr/local/bin/python3
-	```
 
 #### Reproducing Dependencies
 
 Eventually, you may want to copy your environment somewhere else.
 
-	```sh
 	(myproject)$ pip3 freeze > requirements.txt
 	$ pyvenv /tmp/otherproject
 	$ cd /tmp/otherproject
 	$ source bin/activate
 	(otherproject)$ pip3 install -r /tmp/myproject/requirements.txt
-	```
 
 
 ----------
@@ -2312,7 +2130,6 @@ Eventually, you may want to copy your environment somewhere else.
 
 ### Item 54: Consider Module-Scoped Code to Configure Deployment Environments
 
-	```python
 	# dev_main.py
 	TESTING = True
 	import db_connection
@@ -2335,9 +2152,7 @@ Eventually, you may want to copy your environment somewhere else.
 	    Database = TestingDatabase
 	else:
 	    Database = RealDatabase
-	```
 
-	```python
 	# db_connection.py
 	import sys
 	class Win32Database(object):
@@ -2349,7 +2164,6 @@ Eventually, you may want to copy your environment somewhere else.
 	    Database = Win32Database
 	else:
 	    Database = PosixDatabase
-	```
 
 
 ### Item 55: Use `repr` Strings for Debugging Output
@@ -2358,19 +2172,16 @@ The `print` function outputs a human-readable string version of whatever you
 supply it. The problem is that the human-readble string for a value does not make 
 it clear what the actual type of the value is.
 
-	```python
 	print(5)
 	>>> 5
 	print('5')
 	>>> 5
-	```
 
 If you are debugging a program with `print`, these type differences matter.
 
 The `repr` built-n function returns the *printable representation* of an object,
 which should be its most clearly understandable string representation.
 
-	```python
 	a = '\x07'
 	print(repr(a))
 	>>> '\x07'
@@ -2378,35 +2189,29 @@ which should be its most clearly understandable string representation.
 	>>> 5
 	print(repr('5'))
 	>>> '5'
-	```
 
 Passing the value from `repr` to the `eval` built-in function should result in 
 the same Python object you start with.
 
-	```python
 	b = eval(repr(a))
 	assert b == a
-	```
 
 For dynamic Python objects, the default human-readable string value is the same 
 as the `repr` value. Unfortunately, the default value of `repr` ofr `object` 
 instance is not especially helpful.
 
-	```python
 	class OpaqueClass(object):
 	    def __init__(self, x, y):
 	        # ...
 	obj = OpaqueClass(1, 2)
 	print(obj)
 	>>> <__main__.OpaqueClass object at 0x107990ba8>
-	```
 
 This output can not be passed to the `eval` function, and it says nothing about 
 the instance fields of the object.
 
 If you have control of the class:
 
-	```python
 	class BetterClass(object):
 	    def __init__(self, x, y):
 	        # ...
@@ -2415,15 +2220,12 @@ If you have control of the class:
 	obj = BetterClass(1, 2)
 	print(obj)
 	>>> BetterClass(1, 2)
-	```
 
 If you don not have control over the class definition:
 
-	```python
 	obj = OpaqueClass(4, 5)
 	pritn(obj.__dict__)
 	>>> {'y': 5, 'x': 4}
-	```
 
 
 ### Item 56: Test Everything with `unittest`
@@ -2437,11 +2239,9 @@ If you don not have control over the class definition:
 
 ### Item 57: Consider Interactive Debugging with `pdb`
 
-	```python
 	def complex_func(a, b, c):
 	    # ...
 	    import pdb; pdb.set_trace() # A single line so can be commented easily.
-	```
 
 command: "bt", "up", "down"
 
